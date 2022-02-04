@@ -12,6 +12,7 @@ const authRoute = require("./routes/auth");
 
 const app = express();
 
+// .env to start working
 dotenv.config();
 
 mongoose.connect(process.env.MONGO_URL, {useNewUrlParser: true}, ()=>{

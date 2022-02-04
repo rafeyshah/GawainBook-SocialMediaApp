@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema({
+    // Model Entities
     username: {
         type: String,
         required: true,
