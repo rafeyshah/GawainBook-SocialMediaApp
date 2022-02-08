@@ -1,5 +1,6 @@
 :root {
     --blue: #1877f2;
+    --red: red
 }
 
 .topbarContainer {
@@ -78,7 +79,7 @@
 .topbarIconBadge{
     width: 15px;
     height: 15px;
-    background-color: red;
+    background-color: var(--red);
     border-radius: 50%;
     color: white;
     position: absolute;
