@@ -1,15 +1,17 @@
 import "./topbar.css";
 import { Search, Person, Chat, Notifications } from "@material-ui/icons"
-
+import { Link } from "react-router-dom"
 function Topbar() {
     return (
         <div className='topbarContainer'>
             <div className="topbarLeft">
-                <span className="logo">GawainBook</span>
+                <Link to="/" style={{textDecoration: 'none'}}>
+                    <span className="logo">GawainBook</span>
+                </Link>
             </div>
             <div className="topbarCenter">
                 <div className="searchbar">
-                    <Search className="searchIcon"/>
+                    <Search className="searchIcon" />
                     <input placeholder="Search for friend, post or video" className="searchInput" />
                 </div>
             </div>
