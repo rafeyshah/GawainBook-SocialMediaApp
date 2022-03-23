@@ -2,8 +2,10 @@ import "./post.css";
 import { MoreVert } from "@material-ui/icons"
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { format } from 'timeago.js';
+
 function Post({ post }) {
-    const [like, setLike] = useState(post.like)
+    const [like, setLike] = useState(post.likes.length)
     const [isLiked, setisLiked] = useState(false)
     const [user, setUser] = useState({})
     const PF = process.env.REACT_APP_PUBLIC_FOLDER;
@@ -14,7 +16,7 @@ function Post({ post }) {
             setUser(res.data)
         }
         fetchUsers()
-    }, [])
+    }, [post.userId])
 
 
     const likeHandler = () => {
@@ -26,9 +28,9 @@ function Post({ post }) {
             <div className="postWrapper">
                 <div className="postTop">
                     <div className="postTopLeft">
-                        <img className="postProfileImg" src={user.profilePicture} />
+                        <img className="postProfileImg" src={user.profilePicture || PF+"person/noAvatar.png"} />
                         <span className="postUsername">{user.username}</span>
-                        <span className="postDate">{post.date}</span>
+                        <span className="postDate">{format(post.createdAt)}</span>
                     </div>
                     <div className="postTopRight">
                         <MoreVert />
@@ -39,7 +41,7 @@ function Post({ post }) {
                         {/* Some of post don't have desc, that's why adding ? */}
                         {post?.desc}
                     </span>
-                    <img className="postImg" src={PF+post.photo} alt="" />
+                    <img className="postImg" src={PF+post.img} alt="" />
                 </div>
                 <div className="postBottom">
                     <div className="postBottomLeft">
