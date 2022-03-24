@@ -3,6 +3,7 @@ import { MoreVert } from "@material-ui/icons"
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { format } from 'timeago.js';
+import { Link } from "react-router-dom";
 
 function Post({ post }) {
     const [like, setLike] = useState(post.likes.length)
@@ -28,9 +29,12 @@ function Post({ post }) {
             <div className="postWrapper">
                 <div className="postTop">
                     <div className="postTopLeft">
-                        <img className="postProfileImg" src={user.profilePicture || PF+"person/noAvatar.png"} />
+                        <Link to={`profile/${user.username}`}>
+                            <img className="postProfileImg" src={user.profilePicture || PF + "person/noAvatar.png"} />
+                        </Link>
                         <span className="postUsername">{user.username}</span>
                         <span className="postDate">{format(post.createdAt)}</span>
+
                     </div>
                     <div className="postTopRight">
                         <MoreVert />
@@ -41,7 +45,7 @@ function Post({ post }) {
                         {/* Some of post don't have desc, that's why adding ? */}
                         {post?.desc}
                     </span>
-                    <img className="postImg" src={PF+post.img} alt="" />
+                    <img className="postImg" src={PF + post.img} alt="" />
                 </div>
                 <div className="postBottom">
                     <div className="postBottomLeft">
