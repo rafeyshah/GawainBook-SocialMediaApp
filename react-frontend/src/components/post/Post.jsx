@@ -2,7 +2,7 @@ import "./post.css";
 import { MoreVert } from "@material-ui/icons"
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { format } from 'timeago.js';
+// import { format } from 'timeago.js';
 import { Link } from "react-router-dom";
 
 function Post({ post }) {
@@ -33,7 +33,7 @@ function Post({ post }) {
                             <img className="postProfileImg" src={user.profilePicture || PF + "person/noAvatar.png"} />
                         </Link>
                         <span className="postUsername">{user.username}</span>
-                        <span className="postDate">{format(post.createdAt)}</span>
+                        {/* <span className="postDate">{format(post.createdAt)}</span> */}
 
                     </div>
                     <div className="postTopRight">
