@@ -15,7 +15,7 @@ function Post({ post }) {
 
     useEffect(() =>{
         setisLiked(post.likes.includes(currentUser._id))
-    },[currentUser._id])
+    },[currentUser._id, post.likes])
 
     useEffect(async () => {
         const fetchUsers = async () => {
