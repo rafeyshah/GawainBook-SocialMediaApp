@@ -1,4 +1,4 @@
-![Logo](https://github.com/rafeyshah/GawainBook-SocialMediaApp-Mern/blob/master/GawainBook.png)
+![Logo](https://github.com/rafeyshah/GawainBook-SocialMediaApp-Mern/blob/master/GawainBook2.png)
 
 # Gawain Book
 ![](https://img.shields.io/github/last-commit/rafeyshah/GawainBook-SocialMediaApp-Mern) 
