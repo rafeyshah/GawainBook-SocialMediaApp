@@ -11,6 +11,7 @@ const postRoute = require("./routes/posts");
 const router = express.Router();
 const path = require("path");
 
+
 dotenv.config();
 
 mongoose.connect(
@@ -24,6 +25,8 @@ app.use("/images", express.static(path.join(__dirname, "public/images")));
 
 //middleware
 app.use(express.json());
+const port = process.env.PORT || 8800
+
 app.use(helmet());
 app.use(morgan("common"));
 
@@ -49,6 +52,5 @@ app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/posts", postRoute);
 
-app.listen(8800, () => {
-  console.log("Backend server is running!");
-});
+app.listen(port, () => console.log(`listening on localhost: ${port}`));
+
