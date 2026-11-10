@@ -1,0 +1,159 @@
+.auth {
+  min-height: 100vh;
+  background-color: #fbf7f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.authWrapper {
+  width: 100%;
+  max-width: 980px;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+}
+
+.authIntro {
+  flex: 1;
+}
+
+.authLogo {
+  font-size: 50px;
+  font-weight: 800;
+  color: #53a57d;
+  margin: 0 0 10px;
+}
+
+.authDesc {
+  font-size: 24px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.authCard {
+  flex: 1;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.authTabs {
+  display: flex;
+  background: #f0ece8;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.authTab {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #555;
+  text-decoration: none;
+}
+
+.authTab.active {
+  background: #fff;
+  color: #53a57d;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.authField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+}
+
+.authInput {
+  height: 46px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  padding: 0 14px;
+}
+
+.authInput:focus {
+  outline: none;
+  border-color: #53a57d;
+  box-shadow: 0 0 0 3px rgba(83, 165, 125, 0.2);
+}
+
+.authError {
+  background: #fdecea;
+  color: #b3261e;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.authSubmit {
+  height: 48px;
+  border-radius: 10px;
+  border: none;
+  background-color: #53a57d;
+  color: #fbf7f4;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.authSubmit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.authSwitch {
+  text-align: center;
+  margin: 18px 0 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.authSwitch a {
+  color: #53a57d;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .authWrapper {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .authIntro {
+    text-align: center;
+  }
+
+  .authLogo {
+    font-size: 36px;
+  }
+
+  .authDesc {
+    font-size: 18px;
+  }
+
+  .authCard {
+    max-width: 100%;
+  }
+}

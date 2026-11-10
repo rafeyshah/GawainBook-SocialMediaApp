@@ -94,3 +94,23 @@
   object-fit: cover;
   cursor: pointer;
 }
+
+.topbarLogout {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid rgba(251, 247, 244, 0.7);
+  border-radius: 16px;
+  color: #fbf7f4;
+  padding: 4px 10px;
+  margin-right: 12px;
+  font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.topbarLogout:hover {
+  background: rgba(251, 247, 244, 0.15);
+}
