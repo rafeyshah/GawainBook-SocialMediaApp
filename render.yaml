@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     branch: master
-    autoDeploy: true
+    autoDeployTrigger: commit
     buildCommand: >-
       cd react-frontend && npm ci --legacy-peer-deps && CI=false npm run build &&
       cd ../Node-Rest-API && npm ci
