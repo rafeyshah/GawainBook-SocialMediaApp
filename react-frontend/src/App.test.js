@@ -14,6 +14,7 @@ const mockApi = ({ signedIn }) => {
   axios.get.mockImplementation((url) => {
     if (url === "/auth/me") return signedIn ? Promise.resolve({ data: ME }) : Promise.reject(httpError(401, {}));
     if (url === "/legal") return Promise.resolve({ data: LEGAL });
+    if (url === "/health") return Promise.resolve({ data: { db: "connected", apiVersion: 3 } });
     if (url.startsWith("/users?")) return Promise.resolve({ data: { ...ME, followers: [], followings: [] } });
     if (url === "/circles") return Promise.resolve({ data: { mine: [], discover: [] } });
     if (url.startsWith("/shelves")) return Promise.resolve({ data: { reading: [], want: [], finished: [] } });

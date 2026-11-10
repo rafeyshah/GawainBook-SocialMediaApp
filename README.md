@@ -124,7 +124,7 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 
 ### Prerequisites
 
-- **Node.js 20 or newer.** The frontend's `react-scripts` 4 only runs on Node 16, so the root scripts run it through `npx -p node@16` automatically.
+- **Node.js 22 (LTS)**, the version Render and CI use (see `.nvmrc`). Node 24 on Windows can crash during the backend test run. The frontend's `react-scripts` 4 only runs on Node 16, so the root scripts run it through `npx -p node@16` automatically.
 - **A Neon project** with Postgres and object storage. The [Neon CLI](https://neon.com/docs/cli) sets it up for you.
 
 ### 1. Clone and install

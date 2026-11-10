@@ -8,6 +8,7 @@ import Auth from "./pages/auth/Auth";
 import Profile from "./pages/profile/Profile";
 import Waitlist from "./pages/public/Waitlist";
 import { Impressum, Privacy } from "./pages/public/Legal";
+import VersionBanner from "./components/versionBanner/VersionBanner";
 import { BrowserRouter as Router, Switch, Route, Redirect } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
@@ -30,6 +31,7 @@ function App() {
 
   return (
     <Router>
+      <VersionBanner />
       <Switch>
         <Route path="/waitlist">
           <Waitlist />

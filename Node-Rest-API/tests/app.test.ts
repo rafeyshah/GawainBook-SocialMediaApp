@@ -3,6 +3,7 @@ import path from "path";
 import { app, request, UPLOAD_DIR, signUp, makeApp, Client } from "./helpers";
 import { createApp } from "../src/app";
 import { S3Storage } from "../src/storage";
+import { API_VERSION } from "../src/version";
 
 // Smallest valid PNG (1×1 pixel).
 const PNG = Buffer.from(
@@ -15,7 +16,7 @@ describe("GET /api/health", () => {
   test("reports a connected database and the storage in use", async () => {
     const res = await request(app).get("/api/health");
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ db: "connected", error: null, storage: "disk" });
+    expect(res.body).toEqual({ db: "connected", error: null, storage: "disk", apiVersion: API_VERSION });
   });
 });
 

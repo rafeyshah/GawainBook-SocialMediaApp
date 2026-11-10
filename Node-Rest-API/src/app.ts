@@ -8,6 +8,7 @@ import morgan from "morgan";
 import multer from "multer";
 import rateLimit from "express-rate-limit";
 import { dbStatus } from "./db/client";
+import { API_VERSION } from "./version";
 import { errorHandler, handle } from "./http";
 import { createStorage, Storage } from "./storage";
 import { csrfProtection, requireAuth } from "./auth";
@@ -144,7 +145,7 @@ export function createApp(options: AppOptions = {}) {
     "/api/health",
     handle(async (req, res) => {
       const status = await dbStatus();
-      res.status(status.db === "connected" ? 200 : 503).json({ ...status, storage: storage.kind });
+      res.status(status.db === "connected" ? 200 : 503).json({ ...status, storage: storage.kind, apiVersion: API_VERSION });
     })
   );
 

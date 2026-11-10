@@ -1,0 +1,25 @@
+.versionBanner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  color: #5c3b00;
+  background: #fff4d6;
+  border-bottom: 1px solid #f0d58a;
+}
+
+.versionBanner code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 13px;
+}
+
+:root[data-theme="dark"] .versionBanner {
+  color: #ffe2a3;
+  background: #3a2c0b;
+  border-bottom-color: #5c4614;
+}
