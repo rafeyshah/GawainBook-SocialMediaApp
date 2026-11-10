@@ -1,82 +1,199 @@
-![Logo](GawainBook2.png)
+<p align="center">
+  <img src="docs/banner.svg" alt="GawainBook — a social network for book lovers" width="100%">
+</p>
 
-# Gawain Book
-![](https://img.shields.io/github/last-commit/rafeyshah/GawainBook-SocialMediaApp)
+<p align="center">
+  <a href="https://gawainbook.onrender.com"><strong>Live demo</strong></a> ·
+  <a href="#getting-started">Run locally</a> ·
+  <a href="#api-reference">API</a> ·
+  <a href="#roadmap">Roadmap</a>
+</p>
 
-Gawain Book is a social media app where users connect with friends. It works like a virtual photo album, combining ideas from Instagram and Facebook.
+<p align="center">
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white">
+  <img alt="Express" src="https://img.shields.io/badge/Express-000000?logo=express&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React_17-20232A?logo=react&logoColor=61DAFB">
+  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white">
+  <img alt="Deployed on Render" src="https://img.shields.io/badge/Deployed_on-Render-46E3B7?logo=render&logoColor=black">
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue">
+</p>
 
-## Live Preview
-[gawainbook.onrender.com](https://gawainbook.onrender.com/)
+---
 
-Hosted on Render's free plan: after about 15 minutes without visitors the app sleeps, so the first visit can take 30–60 seconds to load.
+## About
 
-## Demo Video
-https://www.loom.com/share/ed2927f5585f4641b3a7eda3366de4ce
+**GawainBook** is a social network for readers. Share what you're reading, post your thoughts and quotes, follow other readers and see what the people you trust are reading next.
 
-## Functionalities
-- Sign in, sign out and registration
-- Create a post (text with image)
-- News feed with your posts and your friends' posts
-- Your profile with your bio and posts
-- Friends' profiles with their posts
-- Follow and unfollow people
+It's a full-stack MERN app (MongoDB, Express, React, Node.js), deployed as a single service: the Express API also serves the React app, so the whole thing runs at one URL.
+
+> **Live demo:** https://gawainbook.onrender.com
+> Runs on Render's free plan, which sleeps after 15 minutes without visitors. The first load can take 30–60 seconds while it wakes up.
+
+## Screenshots
+
+| Sign in | Create account |
+| :---: | :---: |
+| <img src="docs/screenshots/sign-in.png" alt="Sign-in page" width="420"> | <img src="docs/screenshots/create-account.png" alt="Create-account page" width="420"> |
+
+## Features
+
+**Accounts**
+- Sign up and sign in from a single page, with a smooth switch between the two
+- Clear inline errors (wrong password, email already registered, username taken)
+- Sign-in emails are case- and whitespace-insensitive; password hashes never leave the server
+- Log out from the top bar
+- Light and dark themes, remembered per browser
+
+**Social**
+- Share posts with text and an image
+- A home feed of your posts and the posts of people you follow
+- Profile pages showing a reader's details and posts
+- Follow and unfollow other readers
 - Like and unlike posts
-- Your follow list and your friends' follow lists
+- See who you and your friends follow
 
-## Technologies
-- MongoDB, Express.js, React, Node.js
+## Roadmap
 
-## Project Structure
+These features are planned to make GawainBook more book-focused. **None of them are built yet.**
+
+- [ ] Bookshelves: *Want to read*, *Currently reading*, *Read*
+- [ ] Book pages with ratings and reviews
+- [ ] Quote posts tied to a book and page
+- [ ] Reading goals and progress updates
+- [ ] Book clubs and group discussions
+- [ ] Search for books and readers
+- [ ] Image uploads to cloud storage (Cloudinary or S3)
+- [ ] Password reset by email
+- [ ] Dark mode across the whole app
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 17, React Router 5, Material UI 4 icons, Axios |
+| Backend | Node.js, Express 4, Mongoose 5, bcrypt, Helmet, Multer |
+| Database | MongoDB Atlas |
+| Hosting | Render (single web service, auto-deploys on every push to `master`) |
+
+## Project structure
+
 ```
-Node-Rest-API/    Express + MongoDB backend (API under /api, images under /images)
-react-frontend/   React app (Create React App)
-render.yaml       Render deployment config
+.
+├── Node-Rest-API/          Express API (also serves the built React app in production)
+│   ├── models/             Mongoose models (User, Post)
+│   ├── routes/             /api/auth, /api/users, /api/posts
+│   ├── public/images/      Uploaded and default images (served at /images)
+│   └── index.js            App entry: DB connection, middleware, routes, /api/health
+├── react-frontend/         React app (Create React App)
+│   └── src/
+│       ├── pages/          auth, home, profile
+│       ├── components/     topbar, feed, post, share, sidebar, rightbar…
+│       └── context/        Auth state (React context + reducer)
+├── docs/                   README banner and screenshots
+└── render.yaml             Render deployment blueprint
 ```
 
-In production the backend also serves the built React app, so everything runs as one service at one URL.
+## Getting started
 
-## Running Locally
+### Prerequisites
 
-### Requirements
-- Node.js. The frontend uses `react-scripts` 4, which only runs on **Node 16**. With a newer Node installed, use the `npx -p node@16` commands below.
-- A MongoDB database, for example a free cluster on [MongoDB Atlas](https://cloud.mongodb.com/).
+- **Node.js 16** for the frontend. It uses `react-scripts` 4, which doesn't run on Node 17 or newer. On a newer Node, use the `npx -p node@16` command below.
+- **A MongoDB database.** A free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster works.
 
-### Backend
-1. In Atlas, open your cluster → **Connect** → **Drivers** and copy the connection string.
-2. Copy `Node-Rest-API/.env.example` to `Node-Rest-API/.env` and fill in your connection string:
-   ```
-   MONGO_URL = mongodb+srv://<user>:<password>@<cluster>.mongodb.net/gawainbook?retryWrites=true&w=majority
-   ```
-3. Start the API on http://localhost:8800:
-   ```bash
-   cd Node-Rest-API
-   npm install
-   npm start
-   ```
-4. Check the database connection at http://localhost:8800/api/health. It should show `"db":"connected"`.
+### 1. Clone
 
-### Frontend
+```bash
+git clone https://github.com/rafeyshah/GawainBook-SocialMediaApp.git
+cd GawainBook-SocialMediaApp
+```
+
+### 2. Configure the backend
+
+Copy the example env file and add your MongoDB connection string:
+
+```bash
+cp Node-Rest-API/.env.example Node-Rest-API/.env
+```
+
+| Variable | Required | Description |
+| --- | :---: | --- |
+| `MONGO_URL` | ✅ | MongoDB connection string, e.g. `mongodb+srv://<user>:<password>@<cluster>.mongodb.net/gawainbook?retryWrites=true&w=majority` |
+| `PORT` | | API port. Defaults to `8800`. |
+
+In Atlas, add your IP address under **Network Access**, or `0.0.0.0/0` for development.
+
+### 3. Start the API
+
+```bash
+cd Node-Rest-API
+npm install
+npm start
+```
+
+Check that the database is connected: http://localhost:8800/api/health should return `{"db":"connected"}`.
+
+### 4. Start the frontend
+
+In a second terminal:
+
 ```bash
 cd react-frontend
 npm install --legacy-peer-deps
 npx -p node@16 node node_modules/react-scripts/bin/react-scripts.js start
 ```
-The app opens at http://localhost:3000 and forwards API requests to the backend on port 8800.
+
+Open http://localhost:3000. The dev server forwards `/api` requests to the API on port 8800.
+
+> If you change `proxy` in `react-frontend/package.json`, restart the frontend dev server. It reads that setting only at startup.
+
+## API reference
+
+Every endpoint is under `/api`. Request and response bodies are JSON.
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Database connection status |
+| `POST` | `/auth/register` | Create an account: `{ username, email, password }` |
+| `POST` | `/auth/login` | Sign in: `{ email, password }` |
+| `GET` | `/users?username=` or `/users?userId=` | Get a user |
+| `PUT` | `/users/:id` | Update a user |
+| `DELETE` | `/users/:id` | Delete a user |
+| `GET` | `/users/friends/:userId` | List the people a user follows |
+| `PUT` | `/users/:id/follow` | Follow a user: `{ userId }` |
+| `PUT` | `/users/:id/unfollow` | Unfollow a user: `{ userId }` |
+| `POST` | `/posts` | Create a post |
+| `PUT` | `/posts/:id` | Update a post |
+| `DELETE` | `/posts/:id` | Delete a post |
+| `PUT` | `/posts/:id/like` | Like or unlike a post: `{ userId }` |
+| `GET` | `/posts/:id` | Get a post |
+| `GET` | `/posts/timeline/:userId` | A user's feed (their posts plus posts from people they follow) |
+| `GET` | `/posts/profile/:username` | A user's posts |
+| `POST` | `/upload` | Upload an image (multipart: `file`, `name`) |
 
 ## Deployment
-The app deploys to [Render](https://render.com) using `render.yaml`. Every push to `master` rebuilds and redeploys the frontend and backend together.
 
-One-time setup:
-1. In MongoDB Atlas, go to **Network Access** and allow `0.0.0.0/0`, because Render's IP addresses change.
-2. On Render, choose **New → Blueprint** and select this repository.
-3. When prompted, enter your `MONGO_URL`.
+The app deploys to [Render](https://render.com) using [`render.yaml`](render.yaml). Every push to `master` rebuilds the React app and redeploys it together with the API.
 
-After deploying, open `/api/health` on the live site to confirm the database is connected.
+**One-time setup**
+1. In MongoDB Atlas → **Network Access**, allow `0.0.0.0/0`. Render's outbound IP addresses aren't fixed.
+2. In Render, choose **New → Blueprint** and select this repository.
+3. Enter `MONGO_URL` when prompted.
+4. After the first deploy, open `/api/health` and check for `"db":"connected"`.
 
-Note: uploaded images are stored on the server's disk, which Render's free plan wipes on every deploy and restart.
+**Known limitations on the free plan**
+- Uploaded images are saved to the server's disk, which Render wipes on every deploy and restart. Cloud storage is on the roadmap.
+- The service sleeps when idle, so the first request afterwards is slow.
 
 ## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+Contributions are welcome.
+
+1. Fork the repo and create a branch: `git checkout -b feature/my-change`
+2. Commit your changes with a clear message.
+3. Open a pull request describing what changed and why.
+
+For larger changes, please open an issue first to discuss the approach.
 
 ## License
-[MIT](https://choosealicense.com/licenses/mit/)
+
+Released under the [MIT License](https://choosealicense.com/licenses/mit/).
