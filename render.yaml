@@ -27,3 +27,14 @@ services:
         sync: false
       - key: AWS_REGION
         value: us-east-2
+      # Waitlist + Impressum (German law requires a real name, postal address
+      # and email before collecting sign-ups). The waitlist stays closed until
+      # all three are set AND WAITLIST_OPEN is "true".
+      - key: LEGAL_NAME
+        sync: false
+      - key: LEGAL_ADDRESS # lines separated by "|", e.g. Street 1|12345 Berlin|Germany
+        sync: false
+      - key: LEGAL_EMAIL
+        sync: false
+      - key: WAITLIST_OPEN
+        value: "false"

@@ -2,7 +2,7 @@
 // bad data. These tests bypass the API and write to Postgres directly.
 import { eq } from "drizzle-orm";
 import { getDb } from "../src/db/client";
-import { follows, postLikes, posts, users } from "../src/db/schema";
+import { follows, postLikes, posts, sessions, users, waitlistEntries } from "../src/db/schema";
 
 const db = () => getDb();
 const newUser = async (n: string, extra: Partial<typeof users.$inferInsert> = {}) =>
@@ -54,6 +54,25 @@ describe("follows table", () => {
   test("rejects follows that point at missing users", async () => {
     const a = await newUser("alice");
     expect(await pgCode(db().insert(follows).values({ followerId: a.id, followingId: "64b000000000000000000000" }))).toBe("23503");
+  });
+});
+
+describe("sessions and waitlist tables", () => {
+  test("sessions need an existing user and disappear when the user is deleted", async () => {
+    const a = await newUser("alice");
+    const expiresAt = new Date(Date.now() + 1000);
+    expect(await pgCode(db().insert(sessions).values({ tokenHash: "h1", userId: "64b000000000000000000000", expiresAt }))).toBe("23503");
+    await db().insert(sessions).values({ tokenHash: "h2", userId: a.id, expiresAt });
+    expect(await pgCode(db().insert(sessions).values({ tokenHash: "h2", userId: a.id, expiresAt }))).toBe("23505");
+    await db().delete(users).where(eq(users.id, a.id));
+    expect(await db().select().from(sessions)).toEqual([]);
+  });
+
+  test("waitlist emails are unique and must be lowercase", async () => {
+    const row = { favouriteGenre: "fantasy", privacyVersion: "v1" };
+    await db().insert(waitlistEntries).values({ email: "a@example.com", ...row });
+    expect(await pgCode(db().insert(waitlistEntries).values({ email: "a@example.com", ...row }))).toBe("23505");
+    expect(await pgCode(db().insert(waitlistEntries).values({ email: "B@example.com", ...row }))).toBe("23514");
   });
 });
 

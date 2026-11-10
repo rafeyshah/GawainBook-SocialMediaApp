@@ -7,7 +7,7 @@ Short records of the important technical and product decisions, written when eac
 | # | Decision | Status | Date |
 |---|---|---|---|
 | [D1](0001-database-postgresql.md) | Database: PostgreSQL on Neon, with pgvector | Accepted | 2026-11-10 |
-| [D2](0002-auth-session-cookies.md) | Auth: httpOnly session cookie + CSRF protection | Accepted | 2026-11-10 |
+| [D2](0002-auth-session-cookies.md) | Auth: httpOnly session cookie + CSRF protection | Accepted, implemented | 2026-11-10 |
 | [D3](0003-typescript-incremental.md) | TypeScript: all new files, convert old ones when touched | Accepted | 2026-11-10 |
 | [D4](0004-data-access-drizzle.md) | Data access: Drizzle ORM + versioned migrations | Accepted | 2026-11-10 |
 | [D5](0005-first-book.md) | First book: *Pride and Prejudice* | Accepted (source still to verify) | 2026-11-10 |

@@ -28,7 +28,7 @@ function FollowButton({ profile, onChange }) {
     setBusy(true);
     setError("");
     try {
-      await axios.put(`/users/${profile._id}/${following ? "unfollow" : "follow"}`, { userId: me._id });
+      await axios.put(`/users/${profile._id}/${following ? "unfollow" : "follow"}`);
       dispatch({ type: following ? "UNFOLLOW" : "FOLLOW", payload: profile._id });
       onChange(following ? -1 : 1);
     } catch (err) {

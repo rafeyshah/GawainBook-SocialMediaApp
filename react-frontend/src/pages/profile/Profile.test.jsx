@@ -76,7 +76,7 @@ test("following a reader updates the button, count and app state", async () => {
   await header();
   userEvent.click(screen.getByRole("button", { name: "Follow" }));
   await waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: "FOLLOW", payload: "u2" }));
-  expect(axios.put).toHaveBeenCalledWith("/users/u2/follow", { userId: ME._id });
+  expect(axios.put).toHaveBeenCalledWith("/users/u2/follow"); // no userId: the server uses the session
   expect(screen.getByText(/followers/)).toHaveTextContent("2 followers");
 });
 
@@ -89,7 +89,7 @@ test("unfollowing when you already follow them", async () => {
   expect(button).toHaveAttribute("aria-pressed", "true");
   userEvent.click(button);
   await waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: "UNFOLLOW", payload: "u2" }));
-  expect(axios.put).toHaveBeenCalledWith("/users/u2/unfollow", { userId: ME._id });
+  expect(axios.put).toHaveBeenCalledWith("/users/u2/unfollow");
   expect(screen.getByText(/followers/)).toHaveTextContent("0 followers");
 });
 

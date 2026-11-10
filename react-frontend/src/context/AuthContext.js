@@ -1,30 +1,35 @@
 import { createContext, useEffect, useReducer } from "react";
-import AuthReducer from "./AuthReducer";
+import axios from "axios";
+import AuthReducer, { INITIAL_STATE } from "./AuthReducer";
+import { onUnauthorized } from "../http";
 
-// Read the saved session when the provider mounts (not at import time).
-const initialState = () => {
-  let user = null;
-  try {
-    user = JSON.parse(localStorage.getItem("user")) || null;
-  } catch {
-    user = null;
-  }
-  return { user, isFetching: false, error: false };
-};
+export const AuthContext = createContext({ ...INITIAL_STATE, checking: false });
 
-export const AuthContext = createContext({ user: null, isFetching: false, error: false });
-
+// The server decides who is signed in (httpOnly session cookie, decision D2).
+// On load we ask GET /auth/me; nothing about the user is kept in localStorage.
 export const AuthContextProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(AuthReducer, undefined, initialState);
+  const [state, dispatch] = useReducer(AuthReducer, INITIAL_STATE);
 
   useEffect(() => {
+    // Older versions stored the user in localStorage; remove that copy.
     try {
-      if (state.user) localStorage.setItem("user", JSON.stringify(state.user));
-      else localStorage.removeItem("user");
+      localStorage.removeItem("user");
     } catch {
-      /* storage unavailable: session lasts for this visit only */
+      /* storage unavailable */
     }
-  }, [state.user]);
+
+    let cancelled = false;
+    axios
+      .get("/auth/me")
+      .then((res) => !cancelled && dispatch({ type: "LOGIN_SUCCESS", payload: res.data }))
+      .catch(() => !cancelled && dispatch({ type: "LOGOUT" }));
+
+    const stop = onUnauthorized(() => dispatch({ type: "LOGOUT" }));
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -32,6 +37,7 @@ export const AuthContextProvider = ({ children }) => {
         user: state.user,
         isFetching: state.isFetching,
         error: state.error,
+        checking: state.checking,
         dispatch,
       }}
     >

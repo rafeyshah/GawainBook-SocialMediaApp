@@ -4,8 +4,10 @@ import { getDb } from "../db/client";
 import { follows, postLikes, posts, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
 import { postDtos } from "../serializers";
+import { requireAuth } from "../auth";
 
 const router = Router();
+router.use(requireAuth);
 
 export const MAX_DESC = 500;
 // Image keys come from /api/upload ("uploads/<name>") or legacy flat names.
@@ -26,20 +28,19 @@ function validDesc(raw: unknown, hasImage: boolean): string {
   return text;
 }
 
+// The author is always the signed-in user.
 router.post(
   "/",
   handle(async (req, res) => {
-    const { userId } = req.body;
     const img = req.body.img ? String(req.body.img) : undefined;
-    if (!isId(userId)) throw new HttpError(400, "userId is required.");
     const description = validDesc(req.body.desc, Boolean(img));
     if (img && !IMAGE_KEY.test(img)) throw new HttpError(400, "Invalid image.");
 
     const db = getDb();
-    const [author] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
-    if (!author) throw new HttpError(404, "User not found.");
-
-    const [post] = await db.insert(posts).values({ userId, description, imageKey: img ?? null }).returning();
+    const [post] = await db
+      .insert(posts)
+      .values({ userId: req.user!.id, description, imageKey: img ?? null })
+      .returning();
     res.status(201).json((await postDtos(db, [post]))[0]);
   })
 );
@@ -49,7 +50,7 @@ router.put(
   handle(async (req, res) => {
     const post = await findPost(req.params.id);
     if (!post) throw notFound();
-    if (post.userId !== req.body.userId) throw new HttpError(403, "You can only edit your own posts.");
+    if (post.userId !== req.user!.id) throw new HttpError(403, "You can only edit your own posts.");
     const description = validDesc(req.body.desc, Boolean(post.imageKey));
     const db = getDb();
     const [updated] = await db
@@ -66,20 +67,19 @@ router.delete(
   handle(async (req, res) => {
     const post = await findPost(req.params.id);
     if (!post) throw notFound();
-    if (post.userId !== req.body.userId) throw new HttpError(403, "You can only delete your own posts.");
+    if (post.userId !== req.user!.id) throw new HttpError(403, "You can only delete your own posts.");
     await getDb().delete(posts).where(eq(posts.id, post.id));
     res.json({ message: "Post deleted." });
   })
 );
 
-// Toggle like. Responds with the new state and count.
+// Toggle the signed-in user's like. Responds with the new state and count.
 router.put(
   "/:id/like",
   handle(async (req, res) => {
-    const { userId } = req.body;
-    if (!isId(userId)) throw new HttpError(400, "userId is required.");
     const post = await findPost(req.params.id);
     if (!post) throw notFound();
+    const userId = req.user!.id;
 
     const db = getDb();
     const removed = await db
@@ -97,33 +97,17 @@ router.put(
   })
 );
 
+// The signed-in user's timeline: their posts plus posts from people they follow.
 router.get(
-  "/:id",
+  "/timeline",
   handle(async (req, res) => {
-    const post = await findPost(req.params.id);
-    if (!post) throw notFound();
-    res.json((await postDtos(getDb(), [post]))[0]);
-  })
-);
-
-// Your posts plus posts from people you follow, newest first.
-router.get(
-  "/timeline/:userId",
-  handle(async (req, res) => {
-    const { userId } = req.params;
-    if (!isId(userId)) throw new HttpError(404, "User not found.");
     const db = getDb();
-    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
-    if (!user) throw new HttpError(404, "User not found.");
-
-    const followed = db
-      .select({ id: follows.followingId })
-      .from(follows)
-      .where(eq(follows.followerId, userId));
+    const me = req.user!.id;
+    const followed = db.select({ id: follows.followingId }).from(follows).where(eq(follows.followerId, me));
     const rows = await db
       .select()
       .from(posts)
-      .where(or(eq(posts.userId, userId), inArray(posts.userId, followed)))
+      .where(or(eq(posts.userId, me), inArray(posts.userId, followed)))
       .orderBy(desc(posts.createdAt))
       .limit(200);
     res.json(await postDtos(db, rows));
@@ -143,6 +127,15 @@ router.get(
       .orderBy(desc(posts.createdAt))
       .limit(200);
     res.json(await postDtos(db, rows));
+  })
+);
+
+router.get(
+  "/:id",
+  handle(async (req, res) => {
+    const post = await findPost(req.params.id);
+    if (!post) throw notFound();
+    res.json((await postDtos(getDb(), [post]))[0]);
   })
 );
 

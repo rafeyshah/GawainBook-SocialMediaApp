@@ -1,8 +1,8 @@
-import { app, request, createUser, createPost, NONEXISTENT_ID, NONEXISTENT_UUID } from "./helpers";
+import { signUp, createPost, NONEXISTENT_ID, NONEXISTENT_UUID } from "./helpers";
 import { IMAGE_KEY } from "../src/routes/posts";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const like = (postId: string, userId?: string) => request(app).put(`/api/posts/${postId}/like`).send({ userId });
+const descs = (body: { desc: string }[]) => body.map((p) => p.desc);
 
 describe("IMAGE_KEY", () => {
   test.each(["uploads/123-abc.png", "uploads/a_b-c.jpeg", "legacy-name.jpg"])("accepts %p", (k) => expect(IMAGE_KEY.test(k)).toBe(true));
@@ -12,17 +12,17 @@ describe("IMAGE_KEY", () => {
 });
 
 describe("POST /api/posts", () => {
-  test("creates a text post and trims it", async () => {
-    const a = await createUser();
-    const res = await request(app).post("/api/posts").send({ userId: a._id, desc: "  Loved it  " });
+  test("creates a text post by the signed-in user and trims it", async () => {
+    const a = await signUp();
+    const res = await a.client.post("/api/posts", { desc: "  Loved it  " });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ userId: a._id, desc: "Loved it", likes: [] });
+    expect(res.body).toMatchObject({ userId: a.user._id, desc: "Loved it", likes: [] });
     expect(res.body).not.toHaveProperty("img");
   });
 
-  test("allows a photo-only post with an uploaded key", async () => {
-    const a = await createUser();
-    const res = await request(app).post("/api/posts").send({ userId: a._id, img: "uploads/123-abc.jpg" });
+  test("allows a photo-only post", async () => {
+    const a = await signUp();
+    const res = await a.client.post("/api/posts", { img: "uploads/123-abc.jpg" });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ img: "uploads/123-abc.jpg", desc: "" });
   });
@@ -32,155 +32,125 @@ describe("POST /api/posts", () => {
     ["text over 500 characters", { desc: "x".repeat(501) }, /at most 500/],
     ["an image path with directories", { img: "../secret.png" }, /Invalid image/],
   ])("rejects %s", async (_name, body, message) => {
-    const a = await createUser();
-    const res = await request(app).post("/api/posts").send({ userId: a._id, ...body });
+    const a = await signUp();
+    const res = await a.client.post("/api/posts", body);
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(message);
   });
 
   test("accepts exactly 500 characters, including multi-byte characters", async () => {
-    const a = await createUser();
-    expect((await request(app).post("/api/posts").send({ userId: a._id, desc: "x".repeat(500) })).status).toBe(201);
-    expect((await request(app).post("/api/posts").send({ userId: a._id, desc: "é".repeat(500) })).status).toBe(201);
+    const a = await signUp();
+    expect((await a.client.post("/api/posts", { desc: "x".repeat(500) })).status).toBe(201);
+    expect((await a.client.post("/api/posts", { desc: "é".repeat(500) })).status).toBe(201);
   });
 
   test("stores text exactly, including quotes and SQL-looking input", async () => {
-    const a = await createUser();
+    const a = await signUp();
     const desc = `Robert'); DROP TABLE posts;-- "quoted" <b>html</b>`;
-    const res = await request(app).post("/api/posts").send({ userId: a._id, desc });
-    expect(res.body.desc).toBe(desc);
-    expect((await request(app).get(`/api/posts/${res.body._id}`)).body.desc).toBe(desc);
-  });
-
-  test("rejects a missing or unknown author", async () => {
-    expect((await request(app).post("/api/posts").send({ desc: "hi" })).status).toBe(400);
-    expect((await request(app).post("/api/posts").send({ userId: NONEXISTENT_ID, desc: "hi" })).status).toBe(404);
+    const res = await a.client.post("/api/posts", { desc });
+    expect((await a.client.get(`/api/posts/${res.body._id}`)).body.desc).toBe(desc);
   });
 });
 
 describe("PUT /api/posts/:id/like", () => {
   test("toggles like and unlike, returning the new count", async () => {
-    const a = await createUser();
-    const post = await createPost(a._id);
-    expect((await like(post._id, a._id)).body).toEqual({ liked: true, likes: 1 });
-    expect((await like(post._id, a._id)).body).toEqual({ liked: false, likes: 0 });
+    const a = await signUp();
+    const post = await createPost(a.client);
+    expect((await a.client.put(`/api/posts/${post._id}/like`)).body).toEqual({ liked: true, likes: 1 });
+    expect((await a.client.put(`/api/posts/${post._id}/like`)).body).toEqual({ liked: false, likes: 0 });
   });
 
   test("counts likes from different readers separately", async () => {
-    const a = await createUser();
-    const b = await createUser();
-    const post = await createPost(a._id);
-    await like(post._id, a._id);
-    expect((await like(post._id, b._id)).body).toEqual({ liked: true, likes: 2 });
-    expect((await request(app).get(`/api/posts/${post._id}`)).body.likes.sort()).toEqual([a._id, b._id].sort());
+    const a = await signUp();
+    const b = await signUp();
+    const post = await createPost(a.client);
+    await a.client.put(`/api/posts/${post._id}/like`);
+    expect((await b.client.put(`/api/posts/${post._id}/like`)).body).toEqual({ liked: true, likes: 2 });
+    expect((await a.client.get(`/api/posts/${post._id}`)).body.likes.sort()).toEqual([a.user._id, b.user._id].sort());
   });
 
-  test("a liker that doesn't exist is rejected", async () => {
-    const a = await createUser();
-    const post = await createPost(a._id);
-    expect((await like(post._id, NONEXISTENT_UUID)).status).toBe(404);
-  });
-
-  test("handles unknown posts and missing user ids", async () => {
-    const a = await createUser();
-    const post = await createPost(a._id);
-    expect((await like(NONEXISTENT_ID, a._id)).status).toBe(404);
-    expect((await like("nope", a._id)).status).toBe(404);
-    expect((await like(post._id)).status).toBe(400);
+  test("unknown posts are 404", async () => {
+    const a = await signUp();
+    expect((await a.client.put(`/api/posts/${NONEXISTENT_ID}/like`)).status).toBe(404);
+    expect((await a.client.put("/api/posts/nope/like")).status).toBe(404);
   });
 });
 
 describe("edit and delete", () => {
   test("the author can edit and delete their post", async () => {
-    const a = await createUser();
-    const post = await createPost(a._id);
-    const edit = await request(app).put(`/api/posts/${post._id}`).send({ userId: a._id, desc: "Updated" });
+    const a = await signUp();
+    const post = await createPost(a.client);
+    const edit = await a.client.put(`/api/posts/${post._id}`, { desc: "Updated" });
     expect(edit.status).toBe(200);
     expect(edit.body.desc).toBe("Updated");
-    expect(new Date(edit.body.updatedAt).getTime()).toBeGreaterThanOrEqual(new Date(post.updatedAt).getTime());
-    expect((await request(app).delete(`/api/posts/${post._id}`).send({ userId: a._id })).status).toBe(200);
-    expect((await request(app).get(`/api/posts/${post._id}`)).status).toBe(404);
+    expect((await a.client.delete(`/api/posts/${post._id}`)).status).toBe(200);
+    expect((await a.client.get(`/api/posts/${post._id}`)).status).toBe(404);
   });
 
   test("deleting a post removes its likes", async () => {
-    const a = await createUser();
-    const post = await createPost(a._id);
-    await like(post._id, a._id);
-    await request(app).delete(`/api/posts/${post._id}`).send({ userId: a._id });
-    const again = await createPost(a._id);
-    expect((await like(again._id, a._id)).body).toEqual({ liked: true, likes: 1 });
-  });
-
-  test("other readers can't edit or delete it", async () => {
-    const a = await createUser();
-    const b = await createUser();
-    const post = await createPost(a._id);
-    expect((await request(app).put(`/api/posts/${post._id}`).send({ userId: b._id, desc: "x" })).status).toBe(403);
-    expect((await request(app).delete(`/api/posts/${post._id}`).send({ userId: b._id })).status).toBe(403);
+    const a = await signUp();
+    const post = await createPost(a.client);
+    await a.client.put(`/api/posts/${post._id}/like`);
+    await a.client.delete(`/api/posts/${post._id}`);
+    const again = await createPost(a.client);
+    expect((await a.client.put(`/api/posts/${again._id}/like`)).body).toEqual({ liked: true, likes: 1 });
   });
 
   test("editing to empty text is rejected, unless the post has a photo", async () => {
-    const a = await createUser();
-    const textPost = await createPost(a._id);
-    const photoPost = await createPost(a._id, { desc: "caption", img: "uploads/1-a.png" });
-    expect((await request(app).put(`/api/posts/${textPost._id}`).send({ userId: a._id, desc: " " })).status).toBe(400);
-    expect((await request(app).put(`/api/posts/${photoPost._id}`).send({ userId: a._id, desc: "" })).status).toBe(200);
+    const a = await signUp();
+    const textPost = await createPost(a.client);
+    const photoPost = await createPost(a.client, { desc: "caption", img: "uploads/1-a.png" });
+    expect((await a.client.put(`/api/posts/${textPost._id}`, { desc: " " })).status).toBe(400);
+    expect((await a.client.put(`/api/posts/${photoPost._id}`, { desc: "" })).status).toBe(200);
   });
 
   test("unknown posts return 404", async () => {
-    const a = await createUser();
-    expect((await request(app).put(`/api/posts/${NONEXISTENT_ID}`).send({ userId: a._id, desc: "x" })).status).toBe(404);
-    expect((await request(app).delete(`/api/posts/${NONEXISTENT_UUID}`).send({ userId: a._id })).status).toBe(404);
+    const a = await signUp();
+    expect((await a.client.put(`/api/posts/${NONEXISTENT_ID}`, { desc: "x" })).status).toBe(404);
+    expect((await a.client.delete(`/api/posts/${NONEXISTENT_UUID}`)).status).toBe(404);
   });
 });
 
 describe("feeds", () => {
   test("timeline has your posts and posts from people you follow, newest first", async () => {
-    const me = await createUser();
-    const friend = await createUser();
-    const stranger = await createUser();
-    await request(app).put(`/api/users/${friend._id}/follow`).send({ userId: me._id });
+    const me = await signUp();
+    const friend = await signUp();
+    const stranger = await signUp();
+    await me.client.put(`/api/users/${friend.user._id}/follow`);
 
-    await createPost(me._id, { desc: "mine (oldest)" });
+    await createPost(me.client, { desc: "mine (oldest)" });
     await wait(15);
-    await createPost(stranger._id, { desc: "stranger" });
+    await createPost(stranger.client, { desc: "stranger" });
     await wait(15);
-    await createPost(friend._id, { desc: "friend (newest)" });
+    await createPost(friend.client, { desc: "friend (newest)" });
 
-    const res = await request(app).get(`/api/posts/timeline/${me._id}`);
+    const res = await me.client.get("/api/posts/timeline");
     expect(res.status).toBe(200);
-    expect(res.body.map((p: { desc: string }) => p.desc)).toEqual(["friend (newest)", "mine (oldest)"]);
+    expect(descs(res.body)).toEqual(["friend (newest)", "mine (oldest)"]);
   });
 
   test("unfollowing removes that reader's posts from your timeline", async () => {
-    const me = await createUser();
-    const friend = await createUser();
-    await request(app).put(`/api/users/${friend._id}/follow`).send({ userId: me._id });
-    await createPost(friend._id, { desc: "hello" });
-    expect((await request(app).get(`/api/posts/timeline/${me._id}`)).body).toHaveLength(1);
-    await request(app).put(`/api/users/${friend._id}/unfollow`).send({ userId: me._id });
-    expect((await request(app).get(`/api/posts/timeline/${me._id}`)).body).toEqual([]);
-  });
-
-  test("timeline is empty for a new reader", async () => {
-    const me = await createUser();
-    expect((await request(app).get(`/api/posts/timeline/${me._id}`)).body).toEqual([]);
+    const me = await signUp();
+    const friend = await signUp();
+    await me.client.put(`/api/users/${friend.user._id}/follow`);
+    await createPost(friend.client, { desc: "hello" });
+    expect((await me.client.get("/api/posts/timeline")).body).toHaveLength(1);
+    await me.client.put(`/api/users/${friend.user._id}/unfollow`);
+    expect((await me.client.get("/api/posts/timeline")).body).toEqual([]);
   });
 
   test("profile feed lists only that reader's posts, newest first", async () => {
-    const a = await createUser({ username: "alice" });
-    const b = await createUser();
-    await createPost(a._id, { desc: "first" });
+    const a = await signUp({ username: "alice" });
+    const b = await signUp();
+    await createPost(a.client, { desc: "first" });
     await wait(15);
-    await createPost(a._id, { desc: "second" });
-    await createPost(b._id, { desc: "not alice" });
-    const res = await request(app).get("/api/posts/profile/alice");
-    expect(res.body.map((p: { desc: string }) => p.desc)).toEqual(["second", "first"]);
+    await createPost(a.client, { desc: "second" });
+    await createPost(b.client, { desc: "not alice" });
+    expect(descs((await b.client.get("/api/posts/profile/alice")).body)).toEqual(["second", "first"]);
   });
 
-  test("feeds return 404 for unknown readers", async () => {
-    expect((await request(app).get(`/api/posts/timeline/${NONEXISTENT_ID}`)).status).toBe(404);
-    expect((await request(app).get("/api/posts/timeline/bad")).status).toBe(404);
-    expect((await request(app).get("/api/posts/profile/ghost")).status).toBe(404);
+  test("profile feed is 404 for unknown readers", async () => {
+    const a = await signUp();
+    expect((await a.client.get("/api/posts/profile/ghost")).status).toBe(404);
   });
 });

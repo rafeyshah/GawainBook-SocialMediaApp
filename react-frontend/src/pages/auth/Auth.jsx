@@ -5,6 +5,7 @@ import { MenuBook } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
 import { loginCall, registerCall } from "../../apiCalls";
 import ThemeSwitcher from "../../components/themeSwitcher/ThemeSwitcher";
+import { LegalLinks } from "../public/PublicLayout";
 import "./auth.css";
 
 // Smoothly expands/collapses its content (height + opacity) instead of
@@ -198,7 +199,8 @@ export default function Auth({ mode }) {
       </main>
 
       <footer className="authFooter">
-        © {new Date().getFullYear()} GawainBook · A social network for readers
+        <span>© {new Date().getFullYear()} GawainBook · A social network for readers</span>
+        <LegalLinks />
       </footer>
     </div>
   );

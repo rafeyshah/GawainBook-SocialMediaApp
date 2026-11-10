@@ -26,7 +26,7 @@ export function renderWithAuth(
   ui,
   { user = ME, dispatch = jest.fn(), route = "/", path, auth = {} } = {}
 ) {
-  const value = { user, dispatch, isFetching: false, error: false, ...auth };
+  const value = { user, dispatch, isFetching: false, error: false, checking: false, ...auth };
   const content = path ? <Route path={path}>{ui}</Route> : ui;
   const utils = render(
     <AuthContext.Provider value={value}>

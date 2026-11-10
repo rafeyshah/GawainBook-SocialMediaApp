@@ -11,7 +11,9 @@ beforeAll(() => {
 });
 
 afterEach(async () => {
-  await getDb().execute(sql`truncate table post_likes, follows, posts, users restart identity cascade`);
+  await getDb().execute(
+    sql`truncate table sessions, waitlist_entries, post_likes, follows, posts, users restart identity cascade`
+  );
 });
 
 afterAll(async () => {

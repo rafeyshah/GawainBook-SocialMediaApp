@@ -91,5 +91,38 @@ export const postLikes = pgTable(
   (t) => [primaryKey({ name: "post_likes_pk", columns: [t.postId, t.userId] })]
 );
 
+// Server-side sessions (D2). Only a SHA-256 hash of the cookie token is
+// stored, so a database leak can't be replayed as a login.
+export const sessions = pgTable(
+  "sessions",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId), index("sessions_expires_idx").on(t.expiresAt)]
+);
+
+export const waitlistEntries = pgTable(
+  "waitlist_entries",
+  {
+    id: id(),
+    email: text("email").notNull().unique("waitlist_email_unique"),
+    favouriteGenre: text("favourite_genre").notNull(),
+    organizesBookClub: boolean("organizes_book_club").notNull().default(false),
+    // When and to which version of the privacy notice they agreed.
+    consentedAt: timestamp("consented_at", { withTimezone: true }).notNull().defaultNow(),
+    privacyVersion: text("privacy_version").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("waitlist_email_lowercase", sql`${t.email} = lower(${t.email})`),
+    check("waitlist_email_length", sql`char_length(${t.email}) <= 254`),
+  ]
+);
+
 export type User = typeof users.$inferSelect;
 export type Post = typeof posts.$inferSelect;

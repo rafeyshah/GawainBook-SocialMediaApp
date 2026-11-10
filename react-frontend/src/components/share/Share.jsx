@@ -60,7 +60,7 @@ export default function Share({ onPosted }) {
         const uploaded = await axios.post("/upload", data);
         img = uploaded.data.filename;
       }
-      const res = await axios.post("/posts", { userId: user._id, desc: trimmed, img });
+      const res = await axios.post("/posts", { desc: trimmed, img });
       setText("");
       setFile(null);
       if (onPosted) onPosted(res.data);

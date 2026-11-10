@@ -91,19 +91,19 @@ Goal: make the existing app safe to build on, lock the decisions, and start talk
 
 ### Product track (~6 h)
 
-- [ ] Write the **interview script** (§11.1) and a one-paragraph recruiting post.
+- [x] Write the **interview script** (§11.1) and a one-paragraph recruiting post. ✅ [script](../discovery/interview-script.md) · [posts](../discovery/recruiting-post.md)
 - [ ] Book **at least 3 interviews** with fantasy, romantasy or romance readers and **at least 1 with a book-club organizer** for next week.
-- [ ] Put up a **waitlist page** (a simple form; collect email, favourite genre, and "Do you organize a book club?"). Add the privacy notice and German legal notice (Impressum) before collecting any email (§12).
+- [ ] 🟡 Built, not yet open: put up a **waitlist page** (a simple form; collect email, favourite genre, and "Do you organize a book club?"). Add the privacy notice and German legal notice (Impressum) before collecting any email (§12).
 - [ ] Download the chosen book's source text; record its source URL, licence text and date in `docs/corpus/pride-and-prejudice/SOURCE.md`.
 
 ### Week 1 exit checklist
 
-- [ ] Nobody can act as another user (proved by tests)
+- [x] Nobody can act as another user (proved by tests) ✅ (session cookies + CSRF, [D2](../decisions/0002-auth-session-cookies.md); `tests/security.test.ts`)
 - [x] Production runs on Postgres; MongoDB retired ✅ (Neon, verified live 10 Nov)
 - [x] Uploads survive a redeploy ✅ (Neon object storage)
 - [x] Decisions D1–D9 written ✅ ([decision log](../decisions/README.md))
-- [ ] CI runs on every push
-- [ ] 3+ interviews booked; waitlist live
+- [ ] CI runs on every push. Workflow added (`.github/workflows/ci.yml`); tick when the first run on GitHub is green
+- [ ] 3+ interviews booked; waitlist live. Script, posts and waitlist page are ready ([discovery](../discovery/README.md)); waiting on bookings and the Impressum details
 
 **If the week slips:** auth is non-negotiable. The database move can spill into Week 2. Don't start circles on MongoDB "temporarily".
 

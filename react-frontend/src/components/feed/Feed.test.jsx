@@ -23,7 +23,7 @@ test("home feed loads the timeline, newest first, with the composer", async () =
   expect(screen.getByLabelText("Loading posts")).toBeInTheDocument();
   const texts = await screen.findAllByText(/older|newer/);
   expect(texts.map((t) => t.textContent)).toEqual(["newer", "older"]);
-  expect(axios.get).toHaveBeenCalledWith(`/posts/timeline/${ME._id}`);
+  expect(axios.get).toHaveBeenCalledWith("/posts/timeline");
   expect(screen.getByRole("form", { name: "Create a post" })).toBeInTheDocument();
 });
 

@@ -34,4 +34,13 @@ export const registerCall = async (newUser, dispatch) => {
   }
 };
 
-export const logoutCall = (dispatch) => dispatch({ type: "LOGOUT" });
+// Ends the session on the server, then signs out locally even if the
+// request fails (e.g. offline): the user asked to leave.
+export const logoutCall = async (dispatch) => {
+  try {
+    await axios.post("/auth/logout");
+  } catch {
+    /* ignore */
+  }
+  dispatch({ type: "LOGOUT" });
+};

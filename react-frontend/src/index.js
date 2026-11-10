@@ -2,12 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom";
 import App from "./App";
 import { AuthContextProvider } from "./context/AuthContext";
-import axios from "axios";
+import { setupHttp } from "./http";
 import "./theme.css";
 
-// All API routes live under /api. In development the CRA proxy forwards
-// them to the backend; in production the backend serves this app itself.
-axios.defaults.baseURL = "/api";
+// All API routes live under /api (the CRA proxy forwards them in development;
+// in production the backend serves this app). Also adds the CSRF header.
+setupHttp();
 
 // Apply the saved colour theme before the first render to avoid a flash.
 try {

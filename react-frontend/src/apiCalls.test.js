@@ -42,9 +42,25 @@ describe("loginCall / registerCall", () => {
     expect(dispatch).toHaveBeenLastCalledWith({ type: "LOGIN_FAILURE", payload: "Incorrect email or password." });
   });
 
-  test("logoutCall dispatches LOGOUT", () => {
+  test("logoutCall ends the server session, then dispatches LOGOUT", async () => {
+    axios.post.mockResolvedValueOnce({ status: 204 });
     const dispatch = jest.fn();
-    logoutCall(dispatch);
+    await logoutCall(dispatch);
+    expect(axios.post).toHaveBeenCalledWith("/auth/logout");
     expect(dispatch).toHaveBeenCalledWith({ type: "LOGOUT" });
+  });
+
+  test("logoutCall still signs out locally if the server call fails", async () => {
+    axios.post.mockRejectedValueOnce(networkError());
+    const dispatch = jest.fn();
+    await logoutCall(dispatch);
+    expect(dispatch).toHaveBeenCalledWith({ type: "LOGOUT" });
+  });
+
+  test("loginCall and registerCall never send a userId", async () => {
+    axios.post.mockResolvedValue({ data: user });
+    await loginCall({ email: "a@b.co", password: "x" }, jest.fn());
+    await registerCall({ username: "a", email: "a@b.co", password: "x" }, jest.fn());
+    for (const [, body] of axios.post.mock.calls) expect(body).not.toHaveProperty("userId");
   });
 });

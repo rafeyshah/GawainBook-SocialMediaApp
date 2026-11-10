@@ -1,21 +1,24 @@
-import AuthReducer from "./AuthReducer";
+import AuthReducer, { INITIAL_STATE } from "./AuthReducer";
 
 const user = { _id: "u1", username: "jane", followings: ["a"] };
-const signedIn = { user, isFetching: false, error: false };
+const signedIn = { user, isFetching: false, error: false, checking: false };
 
 describe("AuthReducer", () => {
+  test("starts with no user while the session is being checked", () => {
+    expect(INITIAL_STATE).toEqual({ user: null, isFetching: false, error: false, checking: true });
+  });
+
   test("LOGIN_START clears user and error and sets fetching", () => {
     expect(AuthReducer({ ...signedIn, error: "x" }, { type: "LOGIN_START" })).toEqual({
       user: null,
       isFetching: true,
       error: false,
+      checking: false,
     });
   });
 
-  test("LOGIN_SUCCESS stores the user", () => {
-    expect(AuthReducer({ user: null, isFetching: true, error: false }, { type: "LOGIN_SUCCESS", payload: user })).toEqual(
-      signedIn
-    );
+  test("LOGIN_SUCCESS stores the user and ends the session check", () => {
+    expect(AuthReducer(INITIAL_STATE, { type: "LOGIN_SUCCESS", payload: user })).toEqual(signedIn);
   });
 
   test("LOGIN_FAILURE stores the message, with a fallback", () => {
@@ -27,8 +30,8 @@ describe("AuthReducer", () => {
     expect(AuthReducer({ ...signedIn, error: "x" }, { type: "CLEAR_ERROR" })).toEqual(signedIn);
   });
 
-  test("LOGOUT resets the state", () => {
-    expect(AuthReducer(signedIn, { type: "LOGOUT" })).toEqual({ user: null, isFetching: false, error: false });
+  test("LOGOUT resets the state and ends the session check", () => {
+    expect(AuthReducer(INITIAL_STATE, { type: "LOGOUT" })).toEqual({ user: null, isFetching: false, error: false, checking: false });
   });
 
   test("FOLLOW and UNFOLLOW update followings without mutating", () => {
@@ -36,6 +39,17 @@ describe("AuthReducer", () => {
     expect(followed.user.followings).toEqual(["a", "b"]);
     expect(user.followings).toEqual(["a"]);
     expect(AuthReducer(followed, { type: "UNFOLLOW", payload: "a" }).user.followings).toEqual(["b"]);
+  });
+
+  test("FOLLOW and UNFOLLOW are ignored when signed out (e.g. a late response)", () => {
+    const out = { ...INITIAL_STATE, checking: false };
+    expect(AuthReducer(out, { type: "FOLLOW", payload: "b" })).toBe(out);
+    expect(AuthReducer(out, { type: "UNFOLLOW", payload: "b" })).toBe(out);
+  });
+
+  test("handles a user without a followings array", () => {
+    const state = { ...signedIn, user: { _id: "u1" } };
+    expect(AuthReducer(state, { type: "FOLLOW", payload: "b" }).user.followings).toEqual(["b"]);
   });
 
   test("unknown actions return the same state", () => {

@@ -21,13 +21,13 @@ export default function Feed({ username }) {
     try {
       const res = username
         ? await axios.get(`/posts/profile/${encodeURIComponent(username)}`)
-        : await axios.get(`/posts/timeline/${user._id}`);
+        : await axios.get("/posts/timeline");
       setPosts([...res.data].sort(newestFirst));
     } catch (err) {
       setError(errorMessage(err));
       setPosts([]);
     }
-  }, [username, user._id]);
+  }, [username]); // the timeline comes from the session, not a user id
 
   useEffect(() => {
     load();

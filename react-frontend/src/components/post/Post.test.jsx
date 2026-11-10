@@ -59,7 +59,7 @@ test("liking updates instantly and syncs with the server count", async () => {
   userEvent.click(screen.getByRole("button", { name: "Like" }));
   expect(screen.getByText("2 likes")).toBeInTheDocument(); // optimistic
   expect(await screen.findByText("5 likes")).toBeInTheDocument(); // server truth
-  expect(axios.put).toHaveBeenCalledWith("/posts/p9/like", { userId: ME._id });
+  expect(axios.put).toHaveBeenCalledWith("/posts/p9/like"); // the server likes as the signed-in user
   expect(screen.getByRole("button", { name: "Unlike" })).toBeInTheDocument();
 });
 

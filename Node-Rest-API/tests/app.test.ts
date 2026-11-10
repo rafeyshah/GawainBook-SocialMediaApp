@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { app, request, UPLOAD_DIR } from "./helpers";
+import { app, request, UPLOAD_DIR, signUp, makeApp, Client } from "./helpers";
 import { createApp } from "../src/app";
 import { S3Storage } from "../src/storage";
 
@@ -10,9 +10,6 @@ const PNG = Buffer.from(
     "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082",
   "hex"
 );
-
-const upload = (body: Buffer, filename: string, contentType: string) =>
-  request(app).post("/api/upload").attach("file", body, { filename, contentType });
 
 describe("GET /api/health", () => {
   test("reports a connected database and the storage in use", async () => {
@@ -31,7 +28,7 @@ describe("Content-Security-Policy", () => {
   });
 
   test("with Neon storage, the bucket's origin is allowed for images and nothing else", async () => {
-    const neonApp = createApp(new S3Storage({ send: jest.fn() } as never, "assets", undefined, "https://br-x.storage.neon.tech"));
+    const neonApp = createApp({ storage: new S3Storage({ send: jest.fn() } as never, "assets", undefined, "https://br-x.storage.neon.tech") });
     const csp = (await request(neonApp).get("/api/health")).headers["content-security-policy"];
     expect(imgSrc(csp)).toBe("img-src 'self' data: https://br-x.storage.neon.tech");
     expect(csp).toMatch(/script-src 'self'/);
@@ -39,29 +36,36 @@ describe("Content-Security-Policy", () => {
   });
 });
 
-describe("unknown API routes", () => {
-  test("return JSON 404 instead of HTML", async () => {
+describe("malformed and unknown requests", () => {
+  test("unknown API routes return JSON 404 instead of HTML", async () => {
     const res = await request(app).get("/api/does-not-exist");
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: "Not found." });
   });
-});
 
-describe("malformed requests", () => {
   test("invalid JSON gets a 400 with a clear message", async () => {
-    const res = await request(app).post("/api/auth/login").set("Content-Type", "application/json").send("{not json");
+    const client = await new Client().init();
+    const res = await client.agent
+      .post("/api/auth/login")
+      .set("X-CSRF-Token", client.csrf)
+      .set("Content-Type", "application/json")
+      .send("{not json");
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ error: "The request body isn't valid JSON." });
   });
 });
 
 describe("POST /api/upload", () => {
+  let client: Client;
+  beforeEach(async () => {
+    client = (await signUp()).client;
+  });
+
   test("stores an image under a server-generated key and serves it back", async () => {
-    const res = await upload(PNG, "cover.png", "image/png");
+    const res = await client.upload(PNG, "cover.png", "image/png");
     expect(res.status).toBe(201);
     expect(res.body.filename).toMatch(/^uploads\/\d+-[0-9a-f]{12}\.png$/);
     expect(fs.existsSync(path.join(UPLOAD_DIR, res.body.filename))).toBe(true);
-
     const served = await request(app).get(`/images/${res.body.filename}`);
     expect(served.status).toBe(200);
     expect(Buffer.compare(served.body, PNG)).toBe(0);
@@ -72,47 +76,49 @@ describe("POST /api/upload", () => {
     ["image/gif", ".gif"],
     ["image/webp", ".webp"],
   ])("uses the right extension for %s", async (type, ext) => {
-    const res = await upload(PNG, "x", type);
+    const res = await client.upload(PNG, "x", type);
     expect(res.status).toBe(201);
     expect(res.body.filename.endsWith(ext)).toBe(true);
   });
 
   test("two uploads of the same file get different keys", async () => {
-    const [a, b] = await Promise.all([upload(PNG, "a.png", "image/png"), upload(PNG, "a.png", "image/png")]);
+    const [a, b] = await Promise.all([client.upload(PNG, "a.png", "image/png"), client.upload(PNG, "a.png", "image/png")]);
     expect(a.body.filename).not.toBe(b.body.filename);
   });
 
   test("ignores a client-supplied path (no path traversal)", async () => {
-    const res = await request(app)
-      .post("/api/upload")
-      .field("name", "../../index.js")
-      .attach("file", PNG, { filename: "../../evil.png", contentType: "image/png" });
+    const res = await client.upload(PNG, "../../evil.png", "image/png", { name: "../../index.js" });
     expect(res.status).toBe(201);
     expect(res.body.filename).not.toMatch(/\.\./);
   });
 
-  test("rejects non-image files", async () => {
-    const res = await upload(Buffer.from("<script>alert(1)</script>"), "x.html", "text/html");
+  test.each([
+    ["HTML", Buffer.from("<script>alert(1)</script>"), "x.html", "text/html"],
+    ["SVG (can carry scripts)", Buffer.from("<svg/>"), "x.svg", "image/svg+xml"],
+  ])("rejects %s", async (_name, body, filename, type) => {
+    const res = await client.upload(body, filename, type);
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/PNG, JPG/);
   });
 
-  test("rejects SVG (can carry scripts)", async () => {
-    expect((await upload(Buffer.from("<svg/>"), "x.svg", "image/svg+xml")).status).toBe(400);
-  });
-
-  test("rejects files over 5 MB", async () => {
-    const res = await upload(Buffer.alloc(5 * 1024 * 1024 + 1), "big.png", "image/png");
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/5 MB/);
-  });
-
-  test("accepts a file of exactly 5 MB", async () => {
-    expect((await upload(Buffer.alloc(5 * 1024 * 1024), "max.png", "image/png")).status).toBe(201);
+  test("rejects files over 5 MB and accepts exactly 5 MB", async () => {
+    const over = await client.upload(Buffer.alloc(5 * 1024 * 1024 + 1), "big.png", "image/png");
+    expect(over.status).toBe(400);
+    expect(over.body.error).toMatch(/5 MB/);
+    expect((await client.upload(Buffer.alloc(5 * 1024 * 1024), "max.png", "image/png")).status).toBe(201);
   });
 
   test("rejects a request with no file", async () => {
-    expect((await request(app).post("/api/upload")).status).toBe(400);
+    expect((await client.post("/api/upload")).status).toBe(400);
+  });
+
+  test("is rate limited", async () => {
+    const limited = makeApp({ upload: { windowMs: 60_000, max: 2 } });
+    const c = await new Client(limited).init();
+    await c.post("/api/auth/register", { username: "uploader", email: "u@example.com", password: "secret123" });
+    const statuses = [];
+    for (let i = 0; i < 3; i++) statuses.push((await c.upload(PNG, "a.png", "image/png")).status);
+    expect(statuses).toEqual([201, 201, 429]);
   });
 });
 

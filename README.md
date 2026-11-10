@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/rafeyshah/GawainBook-SocialMediaApp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/rafeyshah/GawainBook-SocialMediaApp/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="PostgreSQL on Neon" src="https://img.shields.io/badge/PostgreSQL-Neon-00E599?logo=postgresql&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white">
   <img alt="Drizzle ORM" src="https://img.shields.io/badge/Drizzle_ORM-C5F74F?logo=drizzle&logoColor=black">
@@ -42,6 +43,7 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 **Accounts**
 - Sign up and sign in from a single page, with a smooth switch between the two
 - Clear inline errors (wrong password, email already registered, username taken)
+- Secure sessions: an httpOnly cookie (never readable by JavaScript), CSRF protection, server-side logout, and rate limits on sign-in
 - Sign-in emails are case- and whitespace-insensitive; password hashes never leave the server
 - Log out from the top bar
 - Light and dark themes, remembered per browser
@@ -62,7 +64,9 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 
 - [x] PostgreSQL on Neon, with migrations ([D1](docs/decisions/0001-database-postgresql.md), [D4](docs/decisions/0004-data-access-drizzle.md))
 - [x] Image uploads in object storage ([D8](docs/decisions/0008-hosting.md))
-- [ ] Real authentication with session cookies ([D2](docs/decisions/0002-auth-session-cookies.md)); **the API still trusts `userId` from requests**
+- [x] Real authentication: httpOnly session cookies, CSRF protection and rate limits ([D2](docs/decisions/0002-auth-session-cookies.md))
+- [x] Continuous integration: both test suites and the build run on every push
+- [x] Waitlist, privacy notice and Impressum (the waitlist opens once the legal details are set)
 - [ ] Bookshelves: *Want to read*, *Currently reading*, *Read*
 - [ ] Reading circles with chapter progress and spoiler-safe discussions
 - [ ] A spoiler-aware reading assistant for public-domain books
@@ -133,6 +137,8 @@ neon deploy          # creates the "assets" bucket from neon.ts
 | `DATABASE_URL_UNPOOLED` | Direct Postgres URL, used for migrations |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION` | Neon object storage credentials. Without them, uploads are saved to local disk |
 | `PORT` | API port. Defaults to `8800` |
+| `LEGAL_NAME`, `LEGAL_ADDRESS`, `LEGAL_EMAIL` | Your details for the Impressum and privacy notice. `LEGAL_ADDRESS` lines are separated by `|` |
+| `WAITLIST_OPEN` | Set to `true` to accept waitlist sign-ups. Only takes effect once the three legal details are set |
 
 > Tip: use `neon checkout dev --create` to work on your own copy-on-write branch of the database and files instead of production.
 
@@ -169,24 +175,30 @@ Migrations are applied automatically, over the direct connection, when the serve
 
 Every endpoint is under `/api`. Request and response bodies are JSON.
 
+**Authentication:** sign-in sets an httpOnly `gb_session` cookie. Every route except health, sign-up, sign-in, legal and waitlist requires it, and the user is **always taken from the session**, never from the request. Every state-changing request must send the `gb_csrf` cookie's value in an `X-CSRF-Token` header.
+
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Database and storage status |
 | `POST` | `/auth/register` | Create an account: `{ username, email, password }` |
-| `POST` | `/auth/login` | Sign in: `{ email, password }` |
+| `POST` | `/auth/login` | Sign in: `{ email, password }` (sets the session cookie) |
+| `POST` | `/auth/logout` | End the session |
+| `GET` | `/auth/me` | The signed-in account (401 if signed out) |
 | `GET` | `/users?username=` or `/users?userId=` | Get a user |
 | `PUT` | `/users/:id` | Update your profile: `desc`, `city`, `from`, `relationship`, `profilePicture`, `coverPicture`, `password` |
 | `DELETE` | `/users/:id` | Delete your account (posts, likes and follows go with it) |
 | `GET` | `/users/friends/:userId` | List the people a user follows |
-| `PUT` | `/users/:id/follow` | Follow a user: `{ userId }` |
-| `PUT` | `/users/:id/unfollow` | Unfollow a user: `{ userId }` |
-| `POST` | `/posts` | Create a post: `{ userId, desc, img? }` |
+| `PUT` | `/users/:id/follow` | Follow a user |
+| `PUT` | `/users/:id/unfollow` | Unfollow a user |
+| `POST` | `/posts` | Create a post: `{ desc, img? }` |
 | `PUT` | `/posts/:id` | Edit your post's text |
 | `DELETE` | `/posts/:id` | Delete your post |
-| `PUT` | `/posts/:id/like` | Like or unlike a post: `{ userId }` → `{ liked, likes }` |
+| `PUT` | `/posts/:id/like` | Like or unlike a post → `{ liked, likes }` |
 | `GET` | `/posts/:id` | Get a post |
-| `GET` | `/posts/timeline/:userId` | A user's feed (their posts plus posts from people they follow) |
+| `GET` | `/posts/timeline` | Your feed: your posts plus posts from people you follow |
 | `GET` | `/posts/profile/:username` | A user's posts |
+| `GET` | `/legal` | Public: Impressum details and whether the waitlist is open |
+| `POST` | `/waitlist` | Public: `{ email, favouriteGenre, organizesBookClub, consent: true }` |
 | `POST` | `/upload` | Upload an image (multipart field `file`; PNG, JPG, GIF or WebP, max 5 MB) → `{ filename }` |
 
 Uploaded images are served at `/images/<filename>`, which redirects to a signed, time-limited link in the private bucket.
@@ -227,6 +239,10 @@ It keeps user ids and password hashes, so existing accounts keep working, and it
 **Known limitations on the free plan**
 - The web service sleeps when idle, so the first request afterwards is slow.
 - Neon's free compute suspends when idle; the first query after that takes a little longer.
+
+## Product discovery
+
+Interview script, recruiting posts and notes template: [`docs/discovery/`](docs/discovery/README.md).
 
 ## Contributing
 

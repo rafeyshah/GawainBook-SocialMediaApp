@@ -39,7 +39,7 @@ export default function Post({ post }) {
     setLiked(!liked);
     setLikes(likes + (liked ? -1 : 1));
     try {
-      const res = await axios.put(`/posts/${post._id}/like`, { userId: currentUser._id });
+      const res = await axios.put(`/posts/${post._id}/like`);
       if (res.data && typeof res.data.likes === "number") {
         setLiked(res.data.liked);
         setLikes(res.data.likes);

@@ -1,12 +1,14 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { follows, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
 import { publicProfile } from "../serializers";
+import { endAllSessions, endSession, requireAuth } from "../auth";
 
 const router = Router();
+router.use(requireAuth);
 
 const notFound = () => new HttpError(404, "User not found.");
 
@@ -26,11 +28,16 @@ const EDITABLE = {
   coverPicture: "coverPicture",
 } as const;
 
+// Only the signed-in user's own account can be changed or deleted.
+const ownAccountOnly = (id: string, me: string, action: string) => {
+  if (id !== me) throw new HttpError(403, `You can only ${action} your own account.`);
+};
+
 router.put(
   "/:id",
   handle(async (req, res) => {
-    if (req.body.userId !== req.params.id) throw new HttpError(403, "You can only update your own account.");
-    if (!isId(req.params.id)) throw notFound();
+    const me = req.user!;
+    ownAccountOnly(req.params.id, me.id, "update");
 
     const update: Record<string, unknown> = {};
     for (const [apiName, column] of Object.entries(EDITABLE)) {
@@ -46,18 +53,23 @@ router.put(
         throw new HttpError(400, "That text is too long (max 200 characters).");
       }
     }
+    let passwordChanged = false;
     if (req.body.password !== undefined) {
-      if (String(req.body.password).length < 6) throw new HttpError(400, "Password must be at least 6 characters.");
-      update.passwordHash = await bcrypt.hash(String(req.body.password), 10);
+      const pw = String(req.body.password);
+      if (pw.length < 6 || pw.length > 72) throw new HttpError(400, "Password must be 6–72 characters.");
+      update.passwordHash = await bcrypt.hash(pw, 10);
+      passwordChanged = true;
     }
 
     const db = getDb();
     const [user] = await db
       .update(users)
       .set({ ...update, updatedAt: new Date() })
-      .where(eq(users.id, req.params.id))
+      .where(eq(users.id, me.id))
       .returning();
     if (!user) throw notFound();
+    // A new password signs out every other device.
+    if (passwordChanged) await endAllSessions(me.id);
     res.json(await publicProfile(db, user));
   })
 );
@@ -65,11 +77,10 @@ router.put(
 router.delete(
   "/:id",
   handle(async (req, res) => {
-    if (req.body.userId !== req.params.id) throw new HttpError(403, "You can only delete your own account.");
-    if (!isId(req.params.id)) throw notFound();
-    // Follows, posts and likes are removed by ON DELETE CASCADE.
-    const deleted = await getDb().delete(users).where(eq(users.id, req.params.id)).returning({ id: users.id });
-    if (deleted.length === 0) throw notFound();
+    ownAccountOnly(req.params.id, req.user!.id, "delete");
+    await endSession(req, res);
+    // Sessions, follows, posts and likes are removed by ON DELETE CASCADE.
+    await getDb().delete(users).where(eq(users.id, req.user!.id));
     res.json({ message: "Account deleted." });
   })
 );
@@ -109,15 +120,11 @@ router.get(
 const followHandler = (follow: boolean) =>
   handle(async (req, res) => {
     const targetId = req.params.id;
-    const meId = req.body.userId;
-    if (!isId(meId)) throw new HttpError(400, "userId is required.");
+    const meId = req.user!.id;
     if (meId === targetId) throw new HttpError(403, follow ? "You can't follow yourself." : "You can't unfollow yourself.");
-    if (!isId(targetId)) throw notFound();
+    if (!(await findUser(targetId))) throw notFound();
 
     const db = getDb();
-    const found = await db.select({ id: users.id }).from(users).where(inArray(users.id, [meId, targetId]));
-    if (found.length !== 2) throw notFound();
-
     if (follow) {
       const inserted = await db
         .insert(follows)

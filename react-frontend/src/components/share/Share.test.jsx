@@ -44,7 +44,7 @@ test("posts trimmed text, clears the box and reports the new post", async () => 
   userEvent.type(textbox, "  Dune  ");
   userEvent.click(postButton());
   await waitFor(() => expect(onPosted).toHaveBeenCalledWith(saved));
-  expect(axios.post).toHaveBeenCalledWith("/posts", { userId: ME._id, desc: "Dune", img: undefined });
+  expect(axios.post).toHaveBeenCalledWith("/posts", { desc: "Dune", img: undefined }); // never a userId
   expect(textbox).toHaveValue("");
 });
 
@@ -59,7 +59,7 @@ test("uploads the photo first, then posts with the server's filename", async () 
   await waitFor(() => expect(onPosted).toHaveBeenCalled());
   expect(axios.post.mock.calls[0][0]).toBe("/upload");
   expect(axios.post.mock.calls[0][1]).toBeInstanceOf(FormData);
-  expect(axios.post.mock.calls[1]).toEqual(["/posts", { userId: ME._id, desc: "", img: "123-abc.png" }]);
+  expect(axios.post.mock.calls[1]).toEqual(["/posts", { desc: "", img: "123-abc.png" }]);
   expect(screen.queryByAltText("Selected")).toBeNull();
 });
 

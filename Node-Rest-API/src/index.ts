@@ -24,7 +24,7 @@ async function main() {
   console.log(`Image storage: ${storage.kind === "neon" ? "Neon object storage" : "local disk"}`);
 
   const port = Number(process.env.PORT) || 8800;
-  const server = createApp(storage).listen(port, () => console.log(`listening on localhost: ${port}`));
+  const server = createApp({ storage }).listen(port, () => console.log(`listening on localhost: ${port}`));
 
   const shutdown = () => server.close(() => closeDb().finally(() => process.exit(0)));
   process.on("SIGTERM", shutdown);

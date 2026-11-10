@@ -1,16 +1,21 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import express from "express";
+import express, { RequestHandler } from "express";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { dbStatus } from "./db/client";
 import { errorHandler, handle } from "./http";
 import { createStorage, Storage } from "./storage";
-import authRoute from "./routes/auth";
+import { csrfProtection, requireAuth } from "./auth";
+import { LegalConfig, legalConfig } from "./legal";
+import { authRouter } from "./routes/auth";
 import userRoute from "./routes/users";
 import postRoute from "./routes/posts";
+import { legalRouter, waitlistRouter } from "./routes/waitlist";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_TYPES: Record<string, string> = {
@@ -26,8 +31,49 @@ export const UPLOAD_KEY = /^uploads\/[\w-]+\.(?:png|jpe?g|gif|webp)$/i;
 const STATIC_IMAGES = path.join(__dirname, "../public/images");
 const CLIENT_BUILD = path.join(__dirname, "../../react-frontend/build");
 
-export function createApp(storage: Storage = createStorage()) {
+export interface Limit {
+  windowMs: number;
+  max: number;
+}
+
+export interface AppOptions {
+  storage?: Storage;
+  legal?: () => LegalConfig;
+  limits?: Partial<Record<"auth" | "upload" | "waitlist", Limit>>;
+}
+
+// Defaults: generous for real readers, tight enough to stop brute force.
+export const DEFAULT_LIMITS: Record<"auth" | "upload" | "waitlist", Limit> = {
+  auth: { windowMs: 15 * 60 * 1000, max: 10 },
+  upload: { windowMs: 60 * 60 * 1000, max: 30 },
+  waitlist: { windowMs: 60 * 60 * 1000, max: 5 },
+};
+
+const limiter = ({ windowMs, max }: Limit, message: string): RequestHandler =>
+  rateLimit({
+    windowMs,
+    limit: max,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    handler: (req, res) => {
+      res.status(429).json({ error: message });
+    },
+  });
+
+export function createApp(options: AppOptions = {}) {
+  const storage = options.storage ?? createStorage();
+  const getLegal = options.legal ?? (() => legalConfig());
+  const limits = { ...DEFAULT_LIMITS, ...options.limits };
+  const limit = {
+    auth: limiter(limits.auth, "Too many attempts. Please wait a few minutes and try again."),
+    upload: limiter(limits.upload, "You've uploaded a lot of photos. Please try again later."),
+    waitlist: limiter(limits.waitlist, "Too many sign-ups from this network. Please try again later."),
+  };
+
   const app = express();
+  // Render terminates HTTPS in front of the app: trust one proxy hop so
+  // rate limits see the real client IP and req.secure is correct.
+  app.set("trust proxy", 1);
 
   // Uploaded images redirect to signed URLs on the storage domain; browsers
   // check the final URL against img-src, so that origin must be allowed.
@@ -43,6 +89,8 @@ export function createApp(storage: Storage = createStorage()) {
   );
   if (process.env.NODE_ENV !== "test") app.use(morgan("common"));
   app.use(express.json({ limit: "100kb" }));
+  app.use(cookieParser());
+  app.use(csrfProtection);
 
   // Images: bundled files first, then user uploads from object storage.
   app.use("/images", express.static(STATIC_IMAGES));
@@ -69,7 +117,7 @@ export function createApp(storage: Storage = createStorage()) {
     },
   });
 
-  app.post("/api/upload", (req, res, next) => {
+  app.post("/api/upload", requireAuth, limit.upload, (req, res, next) => {
     upload.single("file")(req, res, (err: unknown) => {
       if (err) {
         const code = (err as { code?: string }).code;
@@ -98,9 +146,11 @@ export function createApp(storage: Storage = createStorage()) {
     })
   );
 
-  app.use("/api/auth", authRoute);
+  app.use("/api/auth", authRouter(limit));
   app.use("/api/users", userRoute);
   app.use("/api/posts", postRoute);
+  app.use("/api/legal", legalRouter(getLegal));
+  app.use("/api/waitlist", waitlistRouter(getLegal, limit.waitlist));
 
   app.use("/api", (req, res) => {
     res.status(404).json({ error: "Not found." });
