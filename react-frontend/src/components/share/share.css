@@ -1,93 +1,98 @@
 .share {
-  width: 100%;
-  border-radius: 10px;
-  -webkit-box-shadow: 0px 0px 16px -8px rgba(0, 0, 0, 0.68);
-  box-shadow: 0px 0px 16px -8px rgba(0, 0, 0, 0.68);
-}
-
-.shareWrapper {
-  padding: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .shareTop {
   display: flex;
-  align-items: center;
-}
-
-.shareProfileImg {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 10px;
+  gap: 12px;
 }
 
 .shareInput {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 0;
   border: none;
-  width: 80%;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.shareInput::placeholder {
+  color: var(--muted);
 }
 
 .shareInput:focus {
   outline: none;
 }
 
-.shareHr {
-  margin: 20px;
+.sharePreview {
+  position: relative;
+  margin-left: 52px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.sharePreview img {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+}
+
+.sharePreviewRemove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
 }
 
 .shareBottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
-.shareOptions{
-    display: flex;
-    margin-left: 20px;
+.shareBottom > .btnGhost {
+  margin-left: 40px;
+  padding: 0 10px;
 }
 
-.shareOption{
-    display: flex;
-    align-items: center;
-    margin-right: 15px;
-    cursor: pointer;
+.shareSubmit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.shareIcon{
-    font-size: 18px;
-    margin-right: 3px;
+.shareCount {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.shareOptionText{
-    font-size: 14px;
-    font-weight: 500;
+.shareCount.over {
+  color: var(--danger);
+  font-weight: 600;
 }
 
-.shareButton{
-    border: none;
-    padding: 7px;
-    border-radius: 5px;
-    background-color: green;
-    font-weight: 500;
-    margin-right: 20px;
-    cursor: pointer;
-    color: white;
-}
-
-.shareImgContainer{
-  padding: 0 20px 10px 20px;
-  position: relative;
-}
-
-.shareImg{
-  width: 100%;
-  object-fit: cover;
-}
-
-.shareCancelImg{
-  position: absolute;
-  top: 0;
-  right: 20px;
-  cursor: pointer;
-  opacity: 0.7;
+@media (max-width: 480px) {
+  .sharePreview,
+  .shareBottom > .btnGhost {
+    margin-left: 0;
+  }
 }

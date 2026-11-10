@@ -1,0 +1,187 @@
+/* GawainBook design tokens, shared by every page.
+   Light by default; dark when <html data-theme="dark">, or when no choice has
+   been saved and the OS prefers dark. */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #f2f2ef;
+  --text: #18181b;
+  --muted: #6b6b73;
+  --border: #e6e6e3;
+  --border-strong: #b4b4b8;
+  --accent: #2f7553;
+  --accent-hover: #255f43;
+  --accent-soft: rgba(47, 117, 83, 0.1);
+  --ring: rgba(47, 117, 83, 0.2);
+  --like: #d1435b;
+  --danger: #b42318;
+  --danger-bg: #fef3f2;
+  --danger-border: #fecdca;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --radius: 14px;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e0e10;
+  --surface: #17171a;
+  --surface-2: #1f1f23;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --border: #2a2a2e;
+  --border-strong: #52525b;
+  --accent: #4ca67a;
+  --accent-hover: #5cb98b;
+  --accent-soft: rgba(76, 166, 122, 0.14);
+  --ring: rgba(76, 166, 122, 0.28);
+  --like: #f0718a;
+  --danger: #fda29b;
+  --danger-bg: rgba(180, 35, 24, 0.12);
+  --danger-border: rgba(253, 162, 155, 0.25);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #0e0e10;
+    --surface: #17171a;
+    --surface-2: #1f1f23;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --border: #2a2a2e;
+    --border-strong: #52525b;
+    --accent: #4ca67a;
+    --accent-hover: #5cb98b;
+    --accent-soft: rgba(76, 166, 122, 0.14);
+    --ring: rgba(76, 166, 122, 0.28);
+    --like: #f0718a;
+    --danger: #fda29b;
+    --danger-bg: rgba(180, 35, 24, 0.12);
+    --danger-border: rgba(253, 162, 155, 0.25);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Shared building blocks */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn {
+  height: 36px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btnSecondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.btnSecondary:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.btnGhost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.btnGhost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.errorBox {
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: 8px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

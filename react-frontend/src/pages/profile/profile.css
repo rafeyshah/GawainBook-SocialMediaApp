@@ -1,50 +1,117 @@
-.profile{
-    display: flex;
+.profileHeader {
+  overflow: hidden;
 }
 
-.profileRight{
-    flex: 9;
+.profileSkeleton {
+  height: 260px;
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
-.profileCover{
-    height: 320px;
-    position: relative;
+.profileCover {
+  height: 140px;
+  background:
+    radial-gradient(600px 160px at 15% 0%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+    linear-gradient(135deg, var(--accent-soft), var(--surface-2));
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid var(--border);
 }
 
-.profileCoverImg{
-    width: 100%;
-    height: 250px;
-    object-fit: cover;
+.profileBody {
+  padding: 0 20px 20px;
 }
 
-.profileUserImg{
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    object-fit: cover;
-    position: absolute;
-    left: 0;
-    right: 0;
-    margin: auto;
-    top: 150px;
-    border: 3px solid white;
+.profileTopRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: -44px;
+  margin-bottom: 12px;
 }
 
-.profileInfo{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.profileAvatar {
+  border-radius: 50%;
+  border: 4px solid var(--surface);
+  background: var(--surface);
+  line-height: 0;
 }
 
-.profileInfoName{
-    font-size: 24px;
+.profileFollow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  padding-bottom: 4px;
 }
 
-.profileInfoDesc{
-    font-weight: 300;
+.profileFollow .btn {
+  min-width: 104px;
 }
 
-.profileRightBottom{
-    display: flex;
+.profileFollowError {
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.profileName {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.profileDesc {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.profileDetails {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.profileDetails li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profileStats {
+  display: flex;
+  gap: 20px;
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.profileStats strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.profileState {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.profileState h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.profileState p {
+  margin: 0 0 20px;
+  color: var(--muted);
+}
+
+.profileState .btn {
+  text-decoration: none;
 }

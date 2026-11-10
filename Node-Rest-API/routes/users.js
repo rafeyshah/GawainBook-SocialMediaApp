@@ -1,122 +1,138 @@
-const User = require("../models/User");
 const router = require("express").Router();
 const bcrypt = require("bcrypt");
+const mongoose = require("mongoose");
+const User = require("../models/User");
+
+const isId = (id) => mongoose.Types.ObjectId.isValid(String(id || ""));
+
+// Fields other people may see. Never includes password, email or admin flags.
+const publicProfile = (user) => ({
+  _id: user._id,
+  username: user.username,
+  profilePicture: user.profilePicture,
+  coverPicture: user.coverPicture,
+  followers: user.followers,
+  followings: user.followings,
+  desc: user.desc,
+  city: user.city,
+  from: user.from,
+  relationship: user.relationship,
+  createdAt: user.createdAt,
+});
+
+// Fields a user may change on their own account.
+const EDITABLE = ["desc", "city", "from", "relationship", "profilePicture", "coverPicture"];
+
+const serverError = (res, err) => {
+  console.error(err);
+  return res.status(500).json({ error: "Something went wrong. Please try again." });
+};
 
 //update user
 router.put("/:id", async (req, res) => {
-  if (req.body.userId === req.params.id || req.body.isAdmin) {
-    if (req.body.password) {
-      try {
-        const salt = await bcrypt.genSalt(10);
-        req.body.password = await bcrypt.hash(req.body.password, salt);
-      } catch (err) {
-        return res.status(500).json(err);
-      }
+  if (req.body.userId !== req.params.id) {
+    return res.status(403).json({ error: "You can only update your own account." });
+  }
+  if (!isId(req.params.id)) return res.status(404).json({ error: "User not found." });
+
+  const update = {};
+  for (const key of EDITABLE) {
+    if (req.body[key] !== undefined) update[key] = req.body[key];
+  }
+  if (req.body.password !== undefined) {
+    if (String(req.body.password).length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
     }
-    try {
-      const user = await User.findByIdAndUpdate(req.params.id, {
-        $set: req.body,
-      });
-      res.status(200).json("Account has been updated");
-    } catch (err) {
-      return res.status(500).json(err);
-    }
-  } else {
-    return res.status(403).json("You can update only your account!");
+    update.password = await bcrypt.hash(String(req.body.password), 10);
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ error: "User not found." });
+    return res.status(200).json(publicProfile(user));
+  } catch (err) {
+    if (err.name === "ValidationError") return res.status(400).json({ error: err.message });
+    return serverError(res, err);
   }
 });
 
 //delete user
 router.delete("/:id", async (req, res) => {
-  if (req.body.userId === req.params.id || req.body.isAdmin) {
-    try {
-      await User.findByIdAndDelete(req.params.id);
-      res.status(200).json("Account has been deleted");
-    } catch (err) {
-      return res.status(500).json(err);
-    }
-  } else {
-    return res.status(403).json("You can delete only your account!");
+  if (req.body.userId !== req.params.id) {
+    return res.status(403).json({ error: "You can only delete your own account." });
   }
-});
-
-//get a user
-router.get("/", async (req, res) => {
-  const userId = req.query.userId;
-  const username = req.query.username;
+  if (!isId(req.params.id)) return res.status(404).json({ error: "User not found." });
   try {
-    const user = userId
-      ? await User.findById(userId)
-      : await User.findOne({ username: username });
-    const { password, updatedAt, ...other } = user._doc;
-    res.status(200).json(other);
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found." });
+    // Remove them from everyone's follower/following lists.
+    await User.updateMany({}, { $pull: { followers: req.params.id, followings: req.params.id } });
+    return res.status(200).json({ message: "Account deleted." });
   } catch (err) {
-    res.status(500).json(err);
+    return serverError(res, err);
   }
 });
 
-//get friends
+//get a user (by ?userId= or ?username=)
+router.get("/", async (req, res) => {
+  const { userId, username } = req.query;
+  try {
+    let user = null;
+    if (userId) user = isId(userId) ? await User.findById(userId) : null;
+    else if (username) user = await User.findOne({ username: String(username) });
+    if (!user) return res.status(404).json({ error: "User not found." });
+    return res.status(200).json(publicProfile(user));
+  } catch (err) {
+    return serverError(res, err);
+  }
+});
+
+//get the people a user follows
 router.get("/friends/:userId", async (req, res) => {
+  if (!isId(req.params.userId)) return res.status(404).json({ error: "User not found." });
   try {
     const user = await User.findById(req.params.userId);
-    const friends = await Promise.all(
-      user.followings.map((friendId) => {
-        return User.findById(friendId);
-      })
+    if (!user) return res.status(404).json({ error: "User not found." });
+    const friends = await User.find(
+      { _id: { $in: user.followings.filter(isId) } },
+      { username: 1, profilePicture: 1 }
     );
-    let friendList = [];
-    friends.map((friend) => {
-      const { _id, username, profilePicture } = friend;
-      friendList.push({ _id, username, profilePicture });
-    });
-    res.status(200).json(friendList)
+    return res.status(200).json(
+      friends.map((f) => ({ _id: f._id, username: f.username, profilePicture: f.profilePicture }))
+    );
   } catch (err) {
-    res.status(500).json(err);
+    return serverError(res, err);
   }
 });
 
-//follow a user
-
-router.put("/:id/follow", async (req, res) => {
-  if (req.body.userId !== req.params.id) {
-    try {
-      const user = await User.findById(req.params.id);
-      const currentUser = await User.findById(req.body.userId);
-      if (!user.followers.includes(req.body.userId)) {
-        await user.updateOne({ $push: { followers: req.body.userId } });
-        await currentUser.updateOne({ $push: { followings: req.params.id } });
-        res.status(200).json("user has been followed");
-      } else {
-        res.status(403).json("you allready follow this user");
-      }
-    } catch (err) {
-      res.status(500).json(err);
-    }
-  } else {
-    res.status(403).json("you cant follow yourself");
+const followHandler = (follow) => async (req, res) => {
+  const targetId = req.params.id;
+  const meId = req.body.userId;
+  if (!isId(meId)) return res.status(400).json({ error: "userId is required." });
+  if (meId === targetId) {
+    return res.status(403).json({ error: follow ? "You can't follow yourself." : "You can't unfollow yourself." });
   }
-});
+  if (!isId(targetId)) return res.status(404).json({ error: "User not found." });
+  try {
+    const [target, me] = await Promise.all([User.findById(targetId), User.findById(meId)]);
+    if (!target || !me) return res.status(404).json({ error: "User not found." });
 
-//unfollow a user
+    const already = target.followers.map(String).includes(String(meId));
+    if (follow && already) return res.status(409).json({ error: "You already follow this reader." });
+    if (!follow && !already) return res.status(409).json({ error: "You don't follow this reader." });
 
-router.put("/:id/unfollow", async (req, res) => {
-  if (req.body.userId !== req.params.id) {
-    try {
-      const user = await User.findById(req.params.id);
-      const currentUser = await User.findById(req.body.userId);
-      if (user.followers.includes(req.body.userId)) {
-        await user.updateOne({ $pull: { followers: req.body.userId } });
-        await currentUser.updateOne({ $pull: { followings: req.params.id } });
-        res.status(200).json("user has been unfollowed");
-      } else {
-        res.status(403).json("you dont follow this user");
-      }
-    } catch (err) {
-      res.status(500).json(err);
-    }
-  } else {
-    res.status(403).json("you cant unfollow yourself");
+    const op = follow ? "$addToSet" : "$pull";
+    await Promise.all([
+      target.updateOne({ [op]: { followers: meId } }),
+      me.updateOne({ [op]: { followings: targetId } }),
+    ]);
+    return res.status(200).json({ following: follow });
+  } catch (err) {
+    return serverError(res, err);
   }
-});
+};
+
+router.put("/:id/follow", followHandler(true));
+router.put("/:id/unfollow", followHandler(false));
 
 module.exports = router;

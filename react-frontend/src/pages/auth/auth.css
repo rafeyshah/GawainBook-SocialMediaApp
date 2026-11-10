@@ -1,58 +1,4 @@
-/* ---------- Theme tokens ----------
-   Light by default. Dark applies when the visitor picks it, or when they
-   chose "System" and their OS is in dark mode. */
-.auth {
-  --bg: #f7f7f5;
-  --surface: #ffffff;
-  --text: #18181b;
-  --muted: #6b6b73;
-  --border: #e6e6e3;
-  --border-strong: #b4b4b8;
-  --accent: #2f7553;
-  --accent-hover: #255f43;
-  --ring: rgba(47, 117, 83, 0.2);
-  --danger: #b42318;
-  --danger-bg: #fef3f2;
-  --danger-border: #fecdca;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
-  color-scheme: light;
-}
-
-:root[data-theme="dark"] .auth {
-  --bg: #0e0e10;
-  --surface: #17171a;
-  --text: #f4f4f5;
-  --muted: #a1a1aa;
-  --border: #2a2a2e;
-  --border-strong: #52525b;
-  --accent: #4ca67a;
-  --accent-hover: #5cb98b;
-  --ring: rgba(76, 166, 122, 0.28);
-  --danger: #fda29b;
-  --danger-bg: rgba(180, 35, 24, 0.12);
-  --danger-border: rgba(253, 162, 155, 0.25);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .auth {
-    --bg: #0e0e10;
-    --surface: #17171a;
-    --text: #f4f4f5;
-    --muted: #a1a1aa;
-    --border: #2a2a2e;
-    --border-strong: #52525b;
-    --accent: #4ca67a;
-    --accent-hover: #5cb98b;
-    --ring: rgba(76, 166, 122, 0.28);
-    --danger: #fda29b;
-    --danger-bg: rgba(180, 35, 24, 0.12);
-    --danger-border: rgba(253, 162, 155, 0.25);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
-    color-scheme: dark;
-  }
-}
+/* Colour tokens come from src/theme.css. */
 
 /* ---------- Layout ---------- */
 .auth {
@@ -98,53 +44,6 @@
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
-}
-
-/* Theme switcher */
-.authTheme {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-}
-
-.authTheme button {
-  width: 30px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.authTheme button:hover {
-  color: var(--text);
-}
-
-.authTheme button.active {
-  background: var(--bg);
-  color: var(--text);
-  box-shadow: inset 0 0 0 1px var(--border);
-}
-
-.authTheme button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 /* ---------- Card ---------- */
@@ -394,7 +293,6 @@
   .auth,
   .authInput,
   .authSubmit,
-  .authTheme button,
   .authCollapse,
   .authCollapse.open {
     transition: none;

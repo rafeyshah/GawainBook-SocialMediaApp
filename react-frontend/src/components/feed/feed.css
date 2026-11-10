@@ -1,7 +1,35 @@
-.feed{
-    flex:5.5
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.feedWrapper{
-    padding: 20px;
+.feedState {
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.feedState h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.feedState p {
+  margin: 0 auto;
+  max-width: 360px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.feedState .btn {
+  margin-top: 16px;
+}
+
+.feedSkeleton {
+  height: 140px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
 }

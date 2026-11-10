@@ -1,20 +1,11 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CircularProgress } from "@material-ui/core";
-import {
-  MenuBook,
-  WbSunnyOutlined,
-  Brightness2Outlined,
-} from "@material-ui/icons";
+import { MenuBook } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
 import { loginCall, registerCall } from "../../apiCalls";
-import useTheme from "../../useTheme";
+import ThemeSwitcher from "../../components/themeSwitcher/ThemeSwitcher";
 import "./auth.css";
-
-const THEMES = [
-  { value: "light", label: "Light", Icon: WbSunnyOutlined },
-  { value: "dark", label: "Dark", Icon: Brightness2Outlined },
-];
 
 // Smoothly expands/collapses its content (height + opacity) instead of
 // popping it in and out. Hidden content is inert so it can't be focused.
@@ -24,28 +15,6 @@ function Collapse({ open, children }) {
   return (
     <div className={`authCollapse ${open ? "open" : ""}`} aria-hidden={!open} inert={open ? undefined : ""}>
       <div className="authCollapseInner">{open ? children : last.current}</div>
-    </div>
-  );
-}
-
-function ThemeSwitcher() {
-  const [theme, setTheme] = useTheme();
-  return (
-    <div className="authTheme" role="radiogroup" aria-label="Color theme">
-      {THEMES.map(({ value, label, Icon }) => (
-        <button
-          key={value}
-          type="button"
-          role="radio"
-          aria-checked={theme === value}
-          title={label}
-          className={theme === value ? "active" : ""}
-          onClick={() => setTheme(value)}
-        >
-          <Icon style={{ fontSize: 16 }} />
-          <span className="srOnly">{label}</span>
-        </button>
-      ))}
     </div>
   );
 }

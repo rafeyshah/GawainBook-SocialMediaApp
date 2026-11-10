@@ -7,12 +7,15 @@ services:
     autoDeployTrigger: commit
     buildCommand: >-
       cd react-frontend && npm ci --legacy-peer-deps && CI=false npm run build &&
-      cd ../Node-Rest-API && npm ci
+      cd ../Node-Rest-API && npm ci --omit=dev
     startCommand: cd Node-Rest-API && npm start
     healthCheckPath: /
     envVars:
       # react-scripts 4 does not build on Node 17+.
       - key: NODE_VERSION
         value: 16.20.2
+      # Test-only package; never download its MongoDB binary on Render.
+      - key: MONGOMS_DISABLE_POSTINSTALL
+        value: "1"
       - key: MONGO_URL
         sync: false

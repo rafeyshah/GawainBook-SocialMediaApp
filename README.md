@@ -45,12 +45,13 @@ It's a full-stack MERN app (MongoDB, Express, React, Node.js), deployed as a sin
 - Light and dark themes, remembered per browser
 
 **Social**
-- Share posts with text and an image
-- A home feed of your posts and the posts of people you follow
-- Profile pages showing a reader's details and posts
+- Share posts with text and a photo, with no page reload, a 500-character limit and a live counter near the limit
+- A home feed of your posts and posts from people you follow, newest first
+- Profile pages with bio, location, join date, and follower and following counts
 - Follow and unfollow other readers
-- Like and unlike posts
-- See who you and your friends follow
+- Like and unlike posts; likes update instantly and roll back if the server rejects them
+- A sidebar listing the readers you follow
+- Loading, empty and error states everywhere, with a retry option
 
 ## Roadmap
 
@@ -164,11 +165,31 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 | `POST` | `/posts` | Create a post |
 | `PUT` | `/posts/:id` | Update a post |
 | `DELETE` | `/posts/:id` | Delete a post |
-| `PUT` | `/posts/:id/like` | Like or unlike a post: `{ userId }` |
+| `PUT` | `/posts/:id/like` | Like or unlike a post: `{ userId }` → `{ liked, likes }` |
 | `GET` | `/posts/:id` | Get a post |
 | `GET` | `/posts/timeline/:userId` | A user's feed (their posts plus posts from people they follow) |
 | `GET` | `/posts/profile/:username` | A user's posts |
-| `POST` | `/upload` | Upload an image (multipart: `file`, `name`) |
+| `POST` | `/upload` | Upload an image (multipart field `file`; PNG, JPG, GIF or WebP, max 5 MB) → `{ filename }` |
+
+## Testing
+
+Both halves of the app have automated tests. They cover success paths, validation, missing and invalid data, permissions, failure handling and the security fixes.
+
+**Backend** (Jest + Supertest against an in-memory MongoDB, so your real database is never touched):
+
+```bash
+cd Node-Rest-API
+npm test
+```
+
+The first run downloads a MongoDB binary (about 500 MB). To use one you already have, set `MONGOMS_SYSTEM_BINARY` to its path.
+
+**Frontend** (Jest + React Testing Library):
+
+```bash
+cd react-frontend
+npx -p node@16 node node_modules/react-scripts/bin/react-scripts.js test --watchAll=false
+```
 
 ## Deployment
 

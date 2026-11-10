@@ -1,85 +1,101 @@
-import "./post.css";
-import { MoreVert } from "@material-ui/icons";
 import { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { format } from "timeago.js";
 import { Link } from "react-router-dom";
+import { Favorite, FavoriteBorder } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
+import Avatar from "../avatar/Avatar";
+import "./post.css";
+
+const PF = process.env.REACT_APP_PUBLIC_FOLDER || "/images/";
+
+export const likeLabel = (n) => (n === 1 ? "1 like" : `${n} likes`);
 
 export default function Post({ post }) {
-  const [like, setLike] = useState(post.likes.length);
-  const [isLiked, setIsLiked] = useState(false);
-  const [user, setUser] = useState({});
-  const PF = process.env.REACT_APP_PUBLIC_FOLDER;
   const { user: currentUser } = useContext(AuthContext);
+  const [author, setAuthor] = useState(null);
+  const [liked, setLiked] = useState(post.likes.includes(currentUser._id));
+  const [likes, setLikes] = useState(post.likes.length);
+  const [busy, setBusy] = useState(false);
+  const [likeError, setLikeError] = useState(false);
 
   useEffect(() => {
-    setIsLiked(post.likes.includes(currentUser._id));
-  }, [currentUser._id, post.likes]);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const res = await axios.get(`/users?userId=${post.userId}`);
-      setUser(res.data);
+    let cancelled = false;
+    axios
+      .get(`/users?userId=${post.userId}`)
+      .then((res) => !cancelled && setAuthor(res.data))
+      .catch(() => !cancelled && setAuthor({ username: "Unknown reader" }));
+    return () => {
+      cancelled = true;
     };
-    fetchUser();
   }, [post.userId]);
 
-  const likeHandler = () => {
+  // Optimistic: update immediately, then sync with the server or roll back.
+  const toggleLike = async () => {
+    if (busy) return;
+    const prev = { liked, likes };
+    setBusy(true);
+    setLikeError(false);
+    setLiked(!liked);
+    setLikes(likes + (liked ? -1 : 1));
     try {
-      axios.put("/posts/" + post._id + "/like", { userId: currentUser._id });
-    } catch (err) {}
-    setLike(isLiked ? like - 1 : like + 1);
-    setIsLiked(!isLiked);
+      const res = await axios.put(`/posts/${post._id}/like`, { userId: currentUser._id });
+      if (res.data && typeof res.data.likes === "number") {
+        setLiked(res.data.liked);
+        setLikes(res.data.likes);
+      }
+    } catch {
+      setLiked(prev.liked);
+      setLikes(prev.likes);
+      setLikeError(true);
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const name = author?.username;
+  const knownAuthor = author && author._id;
+
   return (
-    <div className="post">
-      <div className="postWrapper">
-        <div className="postTop">
-          <div className="postTopLeft">
-            <Link to={`/profile/${user.username}`}>
-              <img
-                className="postProfileImg"
-                src={
-                  user.profilePicture
-                    ? PF + user.profilePicture
-                    : PF + "person/noAvatar.png"
-                }
-                alt=""
-              />
-            </Link>
-            <span className="postUsername">{user.username}</span>
-            <span className="postDate">{format(post.createdAt)}</span>
-          </div>
-          <div className="postTopRight">
-            <MoreVert />
-          </div>
-        </div>
-        <div className="postCenter">
-          <span className="postText">{post?.desc}</span>
-          <img className="postImg" src={PF + post.img} alt="" />
-        </div>
-        <div className="postBottom">
-          <div className="postBottomLeft">
-            <img
-              className="likeIcon"
-              src={`${PF}like.png`}
-              onClick={likeHandler}
-              alt=""
-            />
-            <img
-              className="likeIcon"
-              src={`${PF}heart.png`}
-              onClick={likeHandler}
-              alt=""
-            />
-            <span className="postLikeCounter">{like} people like it</span>
-          </div>
-          <div className="postBottomRight">
-            <span className="postCommentText">{post.comment} comments</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <article className="post card" aria-label={name ? `Post by ${name}` : "Post"}>
+      <header className="postHeader">
+        {knownAuthor ? (
+          <Link to={`/profile/${name}`} className="postAuthor">
+            <Avatar user={author} size={40} />
+            <span className="postName">{name}</span>
+          </Link>
+        ) : (
+          <span className="postAuthor">
+            <Avatar user={author || { username: "" }} size={40} />
+            <span className="postName">{name || " "}</span>
+          </span>
+        )}
+        <time className="postDate" dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString()}>
+          {format(post.createdAt)}
+        </time>
+      </header>
+
+      {post.desc && <p className="postText">{post.desc}</p>}
+      {post.img && <img className="postImg" src={PF + post.img} alt="" loading="lazy" />}
+
+      <footer className="postFooter">
+        <button
+          type="button"
+          className={`postLike ${liked ? "liked" : ""}`}
+          onClick={toggleLike}
+          aria-pressed={liked}
+          aria-label={liked ? "Unlike" : "Like"}
+          disabled={busy}
+        >
+          {liked ? <Favorite style={{ fontSize: 20 }} /> : <FavoriteBorder style={{ fontSize: 20 }} />}
+        </button>
+        <span className="postLikes">{likeLabel(likes)}</span>
+        {likeError && (
+          <span className="postLikeError" role="alert">
+            Couldn't update. Try again.
+          </span>
+        )}
+      </footer>
+    </article>
   );
 }

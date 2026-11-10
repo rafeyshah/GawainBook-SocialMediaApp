@@ -1,34 +1,31 @@
 import { createContext, useEffect, useReducer } from "react";
 import AuthReducer from "./AuthReducer";
 
-const storedUser = () => {
+// Read the saved session when the provider mounts (not at import time).
+const initialState = () => {
+  let user = null;
   try {
-    return JSON.parse(localStorage.getItem("user")) || null;
+    user = JSON.parse(localStorage.getItem("user")) || null;
   } catch {
-    return null;
+    user = null;
   }
+  return { user, isFetching: false, error: false };
 };
 
-const INITIAL_STATE = {
-  user: storedUser(),
-  isFetching: false,
-  error: false,
-};
-
-
-export const AuthContext = createContext(INITIAL_STATE);
+export const AuthContext = createContext({ user: null, isFetching: false, error: false });
 
 export const AuthContextProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(AuthReducer, INITIAL_STATE);
-  
-  useEffect(()=>{
-    if (state.user) {
-      localStorage.setItem("user", JSON.stringify(state.user));
-    } else {
-      localStorage.removeItem("user");
+  const [state, dispatch] = useReducer(AuthReducer, undefined, initialState);
+
+  useEffect(() => {
+    try {
+      if (state.user) localStorage.setItem("user", JSON.stringify(state.user));
+      else localStorage.removeItem("user");
+    } catch {
+      /* storage unavailable: session lasts for this visit only */
     }
-  },[state.user])
-  
+  }, [state.user]);
+
   return (
     <AuthContext.Provider
       value={{
