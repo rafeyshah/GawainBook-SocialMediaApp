@@ -1,9 +1,17 @@
 import axios from "axios";
 
-const errorMessage = (err) =>
-  err.response?.data?.error ||
-  (typeof err.response?.data === "string" ? err.response.data : null) ||
-  "Can't reach the server. Please try again.";
+// Turn an axios error into a short, human-readable message. Never show raw
+// HTML (e.g. an Express/proxy error page) to the user.
+const errorMessage = (err) => {
+  const data = err.response?.data;
+  if (data && typeof data.error === "string") return data.error;
+  if (typeof data === "string" && data.length < 200 && !data.trim().startsWith("<")) {
+    return data;
+  }
+  if (!err.response) return "Can't reach the server. Please try again.";
+  if (err.response.status === 404) return "Sign-in service not found. Please try again later.";
+  return "Something went wrong. Please try again.";
+};
 
 export const loginCall = async (userCredential, dispatch) => {
   dispatch({ type: "LOGIN_START" });
