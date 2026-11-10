@@ -148,13 +148,15 @@
 }
 
 /* ---------- Card ---------- */
+/* Anchored near the top (not vertically centred) so the card doesn't jump
+   when switching to the taller sign-up form; it grows downward instead. */
 .authCard {
-  align-self: center;
+  align-self: start;
   justify-self: center;
   width: 100%;
   max-width: 420px;
   box-sizing: border-box;
-  margin: 24px 16px;
+  margin: clamp(16px, 9vh, 96px) 16px 24px;
   padding: 40px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -177,16 +179,75 @@
   color: var(--muted);
 }
 
+/* Spacing lives on the fields (not `gap`) so a collapsed field takes no space. */
 .authForm {
   display: flex;
   flex-direction: column;
-  gap: 18px;
 }
 
 .authField {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: 18px;
+}
+
+/* Expand/collapse: animates height via grid rows, plus a fade and slight slide. */
+.authCollapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    grid-template-rows 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.18s ease,
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.authCollapse.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: none;
+  transition:
+    grid-template-rows 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.22s ease 0.06s,
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.authCollapseInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Inside the password field, the hint sits under the input. The negative
+   margin cancels the field's 8px gap so a collapsed hint adds no space. */
+.authField > .authCollapse {
+  margin-top: -8px;
+}
+
+.authField .authCollapseInner .authHint {
+  display: block;
+  padding-top: 8px;
+}
+
+.authCollapse .authError {
+  margin-bottom: 18px;
+}
+
+/* Title/subtitle cross-fade when switching modes. */
+.authHeading {
+  animation: authFadeIn 0.25s ease both;
+}
+
+@keyframes authFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .authField label {
@@ -261,6 +322,7 @@
 .authSubmit {
   height: 44px;
   margin-top: 6px;
+  transition: background-color 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -332,7 +394,13 @@
   .auth,
   .authInput,
   .authSubmit,
-  .authTheme button {
+  .authTheme button,
+  .authCollapse,
+  .authCollapse.open {
     transition: none;
+  }
+
+  .authHeading {
+    animation: none;
   }
 }

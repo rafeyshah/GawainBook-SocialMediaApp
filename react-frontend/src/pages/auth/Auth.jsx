@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CircularProgress } from "@material-ui/core";
 import {
@@ -15,6 +15,18 @@ const THEMES = [
   { value: "light", label: "Light", Icon: WbSunnyOutlined },
   { value: "dark", label: "Dark", Icon: Brightness2Outlined },
 ];
+
+// Smoothly expands/collapses its content (height + opacity) instead of
+// popping it in and out. Hidden content is inert so it can't be focused.
+function Collapse({ open, children }) {
+  const last = useRef(children);
+  if (open) last.current = children;
+  return (
+    <div className={`authCollapse ${open ? "open" : ""}`} aria-hidden={!open} inert={open ? undefined : ""}>
+      <div className="authCollapseInner">{open ? children : last.current}</div>
+    </div>
+  );
+}
 
 function ThemeSwitcher() {
   const [theme, setTheme] = useTheme();
@@ -93,18 +105,19 @@ export default function Auth({ mode }) {
       </header>
 
       <main className="authCard">
-
-        <h1 className="authTitle">
-          {isSignup ? "Create your account" : "Sign in to GawainBook"}
-        </h1>
-        <p className="authSubtitle">
-          {isSignup
-            ? "Join a community of readers sharing what they love."
-            : "Welcome back. Enter your details to continue."}
-        </p>
+        <div className="authHeading" key={mode}>
+          <h1 className="authTitle">
+            {isSignup ? "Create your account" : "Sign in to GawainBook"}
+          </h1>
+          <p className="authSubtitle">
+            {isSignup
+              ? "Join a community of readers who love to share."
+              : "Welcome back. Enter your details to continue."}
+          </p>
+        </div>
 
         <form className="authForm" onSubmit={handleSubmit}>
-          {isSignup && (
+          <Collapse open={isSignup}>
             <div className="authField">
               <label htmlFor="username">Username</label>
               <input
@@ -113,6 +126,7 @@ export default function Auth({ mode }) {
                 value={form.username}
                 onChange={update}
                 required
+                disabled={!isSignup}
                 minLength={3}
                 maxLength={20}
                 autoComplete="username"
@@ -121,7 +135,7 @@ export default function Auth({ mode }) {
                 className="authInput"
               />
             </div>
-          )}
+          </Collapse>
 
           <div className="authField">
             <label htmlFor="email">Email</label>
@@ -164,14 +178,14 @@ export default function Auth({ mode }) {
               aria-describedby={isSignup ? "passwordHint" : undefined}
               className="authInput"
             />
-            {isSignup && (
+            <Collapse open={isSignup}>
               <span id="passwordHint" className="authHint">
                 At least 6 characters.
               </span>
-            )}
+            </Collapse>
           </div>
 
-          {isSignup && (
+          <Collapse open={isSignup}>
             <div className="authField">
               <label htmlFor="passwordAgain">Confirm password</label>
               <input
@@ -181,18 +195,19 @@ export default function Auth({ mode }) {
                 value={form.passwordAgain}
                 onChange={update}
                 required
+                disabled={!isSignup}
                 minLength={6}
                 autoComplete="new-password"
                 className="authInput"
               />
             </div>
-          )}
+          </Collapse>
 
-          {message && (
+          <Collapse open={Boolean(message)}>
             <div className="authError" role="alert">
               {message}
             </div>
-          )}
+          </Collapse>
 
           <button className="authSubmit" type="submit" disabled={isFetching}>
             {isFetching ? (
@@ -207,7 +222,7 @@ export default function Auth({ mode }) {
 
         <p className="authSwitch">
           {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
-          <Link to={isSignup ? "/login" : "/register"}>
+          <Link to={isSignup ? "/login" : "/register"} replace>
             {isSignup ? "Sign in" : "Create one"}
           </Link>
         </p>
