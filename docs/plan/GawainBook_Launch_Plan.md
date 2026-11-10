@@ -99,8 +99,8 @@ Goal: make the existing app safe to build on, lock the decisions, and start talk
 ### Week 1 exit checklist
 
 - [ ] Nobody can act as another user (proved by tests)
-- [ ] Production runs on Postgres; MongoDB retired
-- [ ] Uploads survive a redeploy
+- [x] Production runs on Postgres; MongoDB retired ✅ (Neon, verified live 10 Nov)
+- [x] Uploads survive a redeploy ✅ (Neon object storage)
 - [x] Decisions D1–D9 written ✅ ([decision log](../decisions/README.md))
 - [ ] CI runs on every push
 - [ ] 3+ interviews booked; waitlist live
