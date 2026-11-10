@@ -101,6 +101,9 @@ export default function Auth({ mode }) {
                 onChange={update}
                 required
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="authInput"
               />
             </label>
