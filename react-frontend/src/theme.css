@@ -120,6 +120,8 @@ a {
   border: 1px solid transparent;
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }

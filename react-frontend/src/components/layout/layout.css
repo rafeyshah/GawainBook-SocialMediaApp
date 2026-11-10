@@ -32,3 +32,42 @@
     display: none;
   }
 }
+
+.layoutMain {
+  gap: 24px;
+}
+
+.mobileNav {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .mobileNav {
+    position: sticky;
+    top: 60px;
+    z-index: 40;
+    display: flex;
+    gap: 4px;
+    padding: 6px 12px;
+    overflow-x: auto;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobileNav a {
+    flex: 1;
+    min-width: max-content;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .mobileNav a.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+}

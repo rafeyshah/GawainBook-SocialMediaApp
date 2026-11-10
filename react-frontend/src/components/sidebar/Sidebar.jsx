@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import axios from "axios";
-import { HomeOutlined, PersonOutline } from "@material-ui/icons";
+import { PeopleOutline, LocalLibraryOutlined, DynamicFeed, PersonOutline } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
 import Avatar from "../avatar/Avatar";
 import "./sidebar.css";
@@ -18,7 +18,7 @@ export default function Sidebar() {
     setFailed(false);
     axios
       .get(`/users/friends/${user._id}`)
-      .then((res) => !cancelled && setFollowing(res.data))
+      .then((res) => !cancelled && setFollowing(Array.isArray(res.data) ? res.data : []))
       .catch(() => {
         if (!cancelled) {
           setFollowing([]);
@@ -33,9 +33,28 @@ export default function Sidebar() {
   return (
     <aside className="sidebar" aria-label="Sidebar">
       <nav className="sidebarNav" aria-label="Main">
-        <NavLink exact to="/" className="sidebarLink" activeClassName="active">
-          <HomeOutlined style={{ fontSize: 20 }} />
-          Home
+        <NavLink
+          exact
+          to="/"
+          className="sidebarLink"
+          activeClassName="active"
+          isActive={(match, location) => Boolean(match) || /^\/(circles|threads)\//.test(location.pathname)}
+        >
+          <PeopleOutline style={{ fontSize: 20 }} />
+          Circles
+        </NavLink>
+        <NavLink
+          to="/library"
+          className="sidebarLink"
+          activeClassName="active"
+          isActive={(match, location) => Boolean(match) || location.pathname.startsWith("/books/")}
+        >
+          <LocalLibraryOutlined style={{ fontSize: 20 }} />
+          Library
+        </NavLink>
+        <NavLink to="/feed" className="sidebarLink" activeClassName="active">
+          <DynamicFeed style={{ fontSize: 20 }} />
+          Feed
         </NavLink>
         <NavLink to={`/profile/${user.username}`} className="sidebarLink" activeClassName="active">
           <PersonOutline style={{ fontSize: 20 }} />

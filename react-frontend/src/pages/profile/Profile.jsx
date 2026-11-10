@@ -7,6 +7,8 @@ import Feed from "../../components/feed/Feed";
 import Avatar from "../../components/avatar/Avatar";
 import { AuthContext } from "../../context/AuthContext";
 import { errorMessage } from "../../apiCalls";
+import BookCover from "../../components/book/BookCover";
+import "../reading/reading.css";
 import "./profile.css";
 
 const PF = process.env.REACT_APP_PUBLIC_FOLDER || "/images/";
@@ -55,6 +57,57 @@ function FollowButton({ profile, onChange }) {
         </span>
       )}
     </div>
+  );
+}
+
+// The books a reader is reading and has finished. For other readers the API
+// never returns how far they are, so this only shows covers.
+export function ProfileShelves({ username, isMe }) {
+  const [shelves, setShelves] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(`/shelves?username=${encodeURIComponent(username)}`)
+      .then((res) => {
+        if (cancelled) return;
+        const d = res.data || {};
+        // Tolerate missing keys rather than crashing the profile.
+        setShelves({ reading: d.reading || [], want: d.want || [], finished: d.finished || [] });
+      })
+      .catch(() => !cancelled && setShelves({ reading: [], want: [], finished: [] }));
+    return () => {
+      cancelled = true;
+    };
+  }, [username]);
+
+  if (!shelves) return null;
+  const groups = [
+    ["reading", "Reading now"],
+    ["finished", "Finished"],
+  ].filter(([key]) => shelves[key].length > 0);
+  if (!groups.length) {
+    return isMe ? (
+      <section className="card emptyCard">
+        <strong>Your bookshelf is empty</strong>
+        Add books from the <Link to="/library">library</Link>.
+      </section>
+    ) : null;
+  }
+  return (
+    <section className="card cardPad" aria-label="Bookshelf">
+      {groups.map(([key, label]) => (
+        <div key={key} className="section" style={{ marginBottom: 12 }}>
+          <h2 className="sectionTitle">{label}</h2>
+          <div className="shelfStrip">
+            {shelves[key].map((b) => (
+              <Link key={b._id} to={`/books/${b.slug}`} title={`${b.title} by ${b.author}`}>
+                <BookCover book={b} size="sm" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -150,6 +203,7 @@ export default function Profile() {
             </div>
           </div>
         </section>
+        <ProfileShelves username={profile.username} isMe={isMe} />
         <Feed username={profile.username} />
       </>
     );

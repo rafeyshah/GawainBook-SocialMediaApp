@@ -1,0 +1,701 @@
+/* Shared styles for the reading pages (circles, books, library, threads). */
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sectionLink {
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.sectionLink:hover {
+  text-decoration: underline;
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.rowCard {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+a.rowCard:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+}
+
+a.rowCard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rowCardBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rowCardTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rowCardMeta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.rowCardText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.badge.accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge.private {
+  background: color-mix(in srgb, #8c5a7a 16%, transparent);
+  color: #8c5a7a;
+}
+
+:root[data-theme="dark"] .badge.private {
+  color: #d3a6c4;
+}
+
+.emptyCard {
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.emptyCard strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+
+.formRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.formRow > * {
+  flex: 1 1 200px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.input {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+textarea.input {
+  height: auto;
+  min-height: 90px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.skeleton {
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Thread rows */
+.threadGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.threadRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.threadRow:first-child {
+  border-top: none;
+}
+
+a.threadRow:hover {
+  background: var(--surface-2);
+}
+
+a.threadRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.chapterChip {
+  flex-shrink: 0;
+  min-width: 46px;
+  height: 26px;
+  padding: 0 8px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.threadRowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.threadRowTitle {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.threadRowMeta {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.threadRow.locked {
+  color: var(--muted);
+}
+
+.threadRow.locked .chapterChip {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.lockIcon {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+/* Who's where: members placed along the book */
+.readerTrack {
+  position: relative;
+  height: 44px;
+  margin: 8px 14px 4px;
+}
+
+.readerTrackLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 21px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.readerTrackDot {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  line-height: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.readerTrackDot.me {
+  box-shadow: 0 0 0 2px var(--accent);
+  z-index: 1;
+}
+
+.readerTrackScale {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.memberList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.memberItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.memberItem a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.memberItem a:hover {
+  text-decoration: underline;
+}
+
+.memberMeta {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Thread page */
+.threadHeader {
+  padding: 20px;
+}
+
+.threadTitle {
+  margin: 8px 0 12px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.threadBody {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.byline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.byline a {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.byline time {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.replyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reply {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.reply:first-child {
+  border-top: none;
+}
+
+.replyBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.replyText {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lockedPanel {
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.lockedPanel h1 {
+  margin: 12px 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.lockedPanel p {
+  margin: 0 auto 18px;
+  max-width: 380px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.lockBadge {
+  width: 52px;
+  height: 52px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.breadcrumb {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.breadcrumb a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+/* Book page */
+.bookHero {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+}
+
+.bookHeroBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bookHeroTitle {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.bookHeroAuthor {
+  margin: 0;
+  color: var(--muted);
+}
+
+.bookHeroText {
+  margin: 4px 0 0;
+  line-height: 1.6;
+}
+
+.shelfPicker {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.shelfPicker button {
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.shelfPicker button[aria-checked="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.shelfPicker button:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.sourceNote {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Library */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.tabCount {
+  margin-left: 6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bookTile {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.bookTile:hover {
+  border-color: var(--border-strong);
+}
+
+.shelfStrip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+}
+
+.shelfStrip a {
+  line-height: 0;
+}
+
+@media (max-width: 560px) {
+  .bookHero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .readerTrack {
+    margin: 8px 10px 4px;
+  }
+}
+
+.cardTitleLink {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.cardTitleLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.joinCode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.joinCode .input {
+  height: 36px;
+  width: 190px;
+  font-size: 14px;
+}
+
+.circleJoin {
+  align-self: center;
+}
+
+.circleHero {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+}
+
+.circleHeroBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.circleHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.inviteBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.inviteBox code {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.cardPad {
+  padding: 16px 20px;
+}
+
+@media (max-width: 560px) {
+  .circleHero {
+    flex-direction: column;
+  }
+}

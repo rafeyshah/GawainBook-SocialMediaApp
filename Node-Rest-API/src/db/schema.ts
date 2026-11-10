@@ -124,5 +124,147 @@ export const waitlistEntries = pgTable(
   ]
 );
 
+// ---------- Reading: books, chapters, shelves and progress (plan §4.1) ----------
+
+export const books = pgTable(
+  "books",
+  {
+    id: id(),
+    slug: text("slug").notNull().unique("books_slug_unique"),
+    title: text("title").notNull(),
+    author: text("author").notNull(),
+    publishedYear: smallint("published_year"),
+    description: text("description").notNull().default(""),
+    // Colour for the generated cover (no cover images, so no image rights).
+    coverColor: text("cover_color").notNull().default("#2f7553"),
+    sourceNote: text("source_note").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [check("books_cover_color_hex", sql`${t.coverColor} ~ '^#[0-9a-fA-F]{6}$'`)]
+);
+
+// seq is the canonical order (prologue = 0); progress compares against it.
+export const chapters = pgTable(
+  "chapters",
+  {
+    bookId: text("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    seq: smallint("seq").notNull(),
+    title: text("title").notNull(),
+  },
+  (t) => [primaryKey({ name: "chapters_pk", columns: [t.bookId, t.seq] }), check("chapters_seq_nonneg", sql`${t.seq} >= 0`)]
+);
+
+// One row per reader per book: which shelf, and how far they've read.
+export const userBooks = pgTable(
+  "user_books",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bookId: text("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    shelf: text("shelf").notNull(),
+    chapterSeq: smallint("chapter_seq").notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ name: "user_books_pk", columns: [t.userId, t.bookId] }),
+    check("user_books_shelf", sql`${t.shelf} in ('want', 'reading', 'finished')`),
+    check("user_books_chapter_nonneg", sql`${t.chapterSeq} >= 0`),
+  ]
+);
+
+// ---------- Reading circles and spoiler-safe discussions ----------
+
+export const circles = pgTable(
+  "circles",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    bookId: text("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "restrict" }),
+    visibility: text("visibility").notNull().default("public"),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    inviteCode: text("invite_code").notNull().unique("circles_invite_code_unique"),
+    // e.g. "3 chapters a week, Sundays" (free text for now)
+    schedule: text("schedule").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("circles_visibility", sql`${t.visibility} in ('public', 'private')`),
+    check("circles_name_length", sql`char_length(${t.name}) between 3 and 60`),
+  ]
+);
+
+export const circleMembers = pgTable(
+  "circle_members",
+  {
+    circleId: text("circle_id")
+      .notNull()
+      .references(() => circles.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    joinedAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "circle_members_pk", columns: [t.circleId, t.userId] }),
+    check("circle_members_role", sql`${t.role} in ('owner', 'moderator', 'member')`),
+    index("circle_members_user_idx").on(t.userId),
+  ]
+);
+
+export const threads = pgTable(
+  "threads",
+  {
+    id: id(),
+    circleId: text("circle_id")
+      .notNull()
+      .references(() => circles.id, { onDelete: "cascade" }),
+    chapterSeq: smallint("chapter_seq").notNull(),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("threads_title_length", sql`char_length(${t.title}) between 3 and 120`),
+    check("threads_body_length", sql`char_length(${t.body}) <= 4000`),
+    index("threads_circle_chapter_idx").on(t.circleId, t.chapterSeq),
+  ]
+);
+
+export const comments = pgTable(
+  "comments",
+  {
+    id: id(),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("comments_body_length", sql`char_length(${t.body}) between 1 and 2000`),
+    index("comments_thread_idx").on(t.threadId, t.createdAt),
+  ]
+);
+
 export type User = typeof users.$inferSelect;
+export type Book = typeof books.$inferSelect;
+export type Circle = typeof circles.$inferSelect;
+export type Thread = typeof threads.$inferSelect;
 export type Post = typeof posts.$inferSelect;

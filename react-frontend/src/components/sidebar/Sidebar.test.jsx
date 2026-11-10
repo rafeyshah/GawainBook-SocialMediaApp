@@ -5,21 +5,31 @@ import { renderWithAuth, ME, networkError } from "../../testUtils";
 
 jest.mock("axios");
 
-test("has Home and Profile links, with the current page highlighted", async () => {
-  axios.get.mockResolvedValue({ data: [] });
-  renderWithAuth(<Sidebar />, { route: "/" });
-  expect(screen.getByRole("link", { name: "Home" })).toHaveClass("active");
-  expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute("href", `/profile/${ME.username}`);
-  expect(screen.getByRole("link", { name: "Profile" })).not.toHaveClass("active");
-  await screen.findByText(/not following anyone/);
-});
+const links = () => ["Circles", "Library", "Feed", "Profile"].map((name) => screen.getByRole("link", { name }));
+const active = () => links().filter((l) => l.classList.contains("active")).map((l) => l.textContent);
 
-test("highlights Profile on your profile page", async () => {
-  axios.get.mockResolvedValue({ data: [] });
-  renderWithAuth(<Sidebar />, { route: `/profile/${ME.username}` });
-  expect(screen.getByRole("link", { name: "Profile" })).toHaveClass("active");
-  expect(screen.getByRole("link", { name: "Home" })).not.toHaveClass("active");
-  await screen.findByText(/not following anyone/);
+describe("navigation", () => {
+  beforeEach(() => axios.get.mockResolvedValue({ data: [] }));
+
+  test("has Circles (home), Library, Feed and Profile", async () => {
+    renderWithAuth(<Sidebar />);
+    expect(links().map((l) => l.getAttribute("href"))).toEqual(["/", "/library", "/feed", `/profile/${ME.username}`]);
+    await screen.findByText(/not following anyone/);
+  });
+
+  test.each([
+    ["/", "Circles"],
+    ["/circles/abc", "Circles"],
+    ["/threads/abc", "Circles"],
+    ["/library", "Library"],
+    ["/books/pride-and-prejudice", "Library"],
+    ["/feed", "Feed"],
+    [`/profile/${ME.username}`, "Profile"],
+  ])("on %s only %s is highlighted", async (route, expected) => {
+    renderWithAuth(<Sidebar />, { route });
+    expect(active()).toEqual([expected]);
+    await screen.findByText(/not following anyone/);
+  });
 });
 
 test("lists the readers you follow, linking to their profiles", async () => {

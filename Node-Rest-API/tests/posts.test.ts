@@ -44,6 +44,13 @@ describe("POST /api/posts", () => {
     expect((await a.client.post("/api/posts", { desc: "é".repeat(500) })).status).toBe(201);
   });
 
+  test("stores emoji and non-Latin scripts exactly (UTF-8 end to end)", async () => {
+    const a = await signUp();
+    const desc = "Reading 📚✨ — Jane Austen · 傲慢与偏见 · Гордость и предубеждение · كبرياء وتحامل";
+    const res = await a.client.post("/api/posts", { desc });
+    expect((await a.client.get(`/api/posts/${res.body._id}`)).body.desc).toBe(desc);
+  });
+
   test("stores text exactly, including quotes and SQL-looking input", async () => {
     const a = await signUp();
     const desc = `Robert'); DROP TABLE posts;-- "quoted" <b>html</b>`;

@@ -1,4 +1,9 @@
 import Home from "./pages/home/Home";
+import CirclesHome from "./pages/circles/CirclesHome";
+import CirclePage from "./pages/circles/CirclePage";
+import ThreadPage from "./pages/circles/ThreadPage";
+import BookPage from "./pages/books/BookPage";
+import Library from "./pages/books/Library";
 import Auth from "./pages/auth/Auth";
 import Profile from "./pages/profile/Profile";
 import Waitlist from "./pages/public/Waitlist";
@@ -36,8 +41,13 @@ function App() {
           <Impressum />
         </Route>
         <Route exact path="/">
-          {signedIn(<Home />)}
+          {signedIn(<CirclesHome />)}
         </Route>
+        <Route path="/circles/:id">{signedIn(<CirclePage />)}</Route>
+        <Route path="/threads/:id">{signedIn(<ThreadPage />)}</Route>
+        <Route path="/books/:slug">{signedIn(<BookPage />)}</Route>
+        <Route path="/library">{signedIn(<Library />)}</Route>
+        <Route path="/feed">{signedIn(<Home />)}</Route>
         <Route path="/login">{guestOnly(<Auth mode="login" />)}</Route>
         <Route path="/register">{guestOnly(<Auth mode="register" />)}</Route>
         <Route path="/profile/:username">{signedIn(<Profile />)}</Route>

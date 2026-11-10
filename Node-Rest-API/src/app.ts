@@ -16,6 +16,8 @@ import { authRouter } from "./routes/auth";
 import userRoute from "./routes/users";
 import postRoute from "./routes/posts";
 import { legalRouter, waitlistRouter } from "./routes/waitlist";
+import bookRoute from "./routes/books";
+import circleRoute from "./routes/circles";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_TYPES: Record<string, string> = {
@@ -149,6 +151,8 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api/auth", authRouter(limit));
   app.use("/api/users", userRoute);
   app.use("/api/posts", postRoute);
+  app.use("/api", bookRoute);
+  app.use("/api", circleRoute);
   app.use("/api/legal", legalRouter(getLegal));
   app.use("/api/waitlist", waitlistRouter(getLegal, limit.waitlist));
 

@@ -40,10 +40,10 @@ What exists in this repo now, compared with the concept's MVP:
 | Follow / unfollow | ✅ Complete | Validated, tested |
 | Posts, likes, feed | ✅ Complete | General feed. Note: the concept defers a "complex public feed" |
 | Image upload | 🟡 Partial | Safe and validated, but stored on the server disk, which Render wipes on every deploy and restart |
-| Shelves (want / reading / read) | ❌ Missing | |
-| Books, editions, chapters | ❌ Missing | |
-| Reading circles, membership, invitations | ❌ Missing | Core of the product |
-| Chapter progress + spoiler-safe threads | ❌ Missing | Core of the product |
+| Shelves (want / reading / read) | ✅ Built (11 Nov) | Library page, shelf picker, progress per book |
+| Books, editions, chapters | 🟡 Built without editions (11 Nov) | Books + chapters (`seq`, prologue = 0). One edition per book for now |
+| Reading circles, membership, invitations | ✅ Built (11 Nov) | Public/private circles, roles, invite codes; circles are the home screen (D9) |
+| Chapter progress + spoiler-safe threads | ✅ Built (11 Nov) | One access rule in `src/policy.ts`; locked threads return no title or text |
 | Reporting, blocking, moderation | ❌ Missing | Required before inviting real readers |
 | Notifications / reminders | ❌ Missing | |
 | AI reading assistant | ❌ Missing | |
@@ -167,16 +167,16 @@ Put **one** function, `canReadThread(user, thread)`, in a single policy module. 
 
 | # | Case | Expected |
 |---|---|---|
-| 1 | Non-member requests a private circle's threads (list, single, comments) | 404 on all three (don't reveal the circle exists) |
-| 2 | Member at chapter 4 requests a chapter 9 thread by id | 403 with no title or body |
-| 3 | Thread list for a chapter-4 reader | Contains only `chapter_seq <= 4` |
+| 1 | Non-member requests a private circle's threads (list, single, comments) | 404 on all three (don't reveal the circle exists) ✅ tested |
+| 2 | Member at chapter 4 requests a chapter 9 thread by id | 403 with no title or body ✅ tested |
+| 3 | Thread list for a chapter-4 reader | Contains only `chapter_seq <= 4` ✅ tested (later ones as locked placeholders) |
 | 4 | Search for a word that appears only in a chapter 9 comment | No result for the chapter-4 reader |
 | 5 | Notification about a chapter 9 reply | Not delivered (or delivered with no preview) to the chapter-4 reader |
 | 6 | Blocked user's comments | Hidden from the blocker everywhere |
-| 7 | Member removed from a circle | Loses access immediately |
-| 8 | Progress moves backwards | Previously visible later threads become locked again |
-| 9 | Prologue / epilogue chapters | Correct order using `seq` |
-| 10 | Moderator vs member actions | Role checks enforced on the server |
+| 7 | Member removed from a circle | Loses access immediately ✅ tested |
+| 8 | Progress moves backwards | Previously visible later threads become locked again ✅ tested |
+| 9 | Prologue / epilogue chapters | Correct order using `seq` ✅ tested |
+| 10 | Moderator vs member actions | Role checks enforced on the server ✅ tested |
 
 ### Phase 1 exit gate (target 7 Dec)
 

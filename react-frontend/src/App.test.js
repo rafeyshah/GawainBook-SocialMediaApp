@@ -15,7 +15,11 @@ const mockApi = ({ signedIn }) => {
     if (url === "/auth/me") return signedIn ? Promise.resolve({ data: ME }) : Promise.reject(httpError(401, {}));
     if (url === "/legal") return Promise.resolve({ data: LEGAL });
     if (url.startsWith("/users?")) return Promise.resolve({ data: { ...ME, followers: [], followings: [] } });
-    return Promise.resolve({ data: [] });
+    if (url === "/circles") return Promise.resolve({ data: { mine: [], discover: [] } });
+    if (url.startsWith("/shelves")) return Promise.resolve({ data: { reading: [], want: [], finished: [] } });
+    if (url === "/books" || url.startsWith("/posts") || url.startsWith("/users/friends")) return Promise.resolve({ data: [] });
+    // Anything else (a specific circle, book or thread) doesn't exist here.
+    return Promise.reject(httpError(404, { error: "Not found." }));
   });
   axios.post.mockResolvedValue({ status: 204 });
 };
@@ -80,15 +84,27 @@ describe("signed out", () => {
 describe("signed in", () => {
   beforeEach(() => mockApi({ signedIn: true }));
 
-  test("home shows the feed", async () => {
+  test("home is your circles (the feed has its own tab)", async () => {
     renderAt("/");
+    expect(await screen.findByText("You're not in a circle yet")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: new RegExp(ME.username) })).toBeInTheDocument();
+  });
+
+  test("/feed shows the posts feed", async () => {
+    renderAt("/feed");
     expect(await screen.findByText("Your feed is quiet")).toBeInTheDocument();
     expect(screen.getByRole("form", { name: "Create a post" })).toBeInTheDocument();
   });
 
+  test.each(["/library", "/books/pride-and-prejudice", "/circles/c1", "/threads/t1"])("%s is a signed-in page", async (path) => {
+    renderAt(path);
+    await screen.findAllByRole("link", { name: "Circles" });
+    expect(window.location.pathname).toBe(path);
+  });
+
   test.each(["/login", "/register"])("%s sends you home", async (path) => {
     renderAt(path);
-    expect(await screen.findByText("Your feed is quiet")).toBeInTheDocument();
+    expect(await screen.findByText("You're not in a circle yet")).toBeInTheDocument();
     expect(window.location.pathname).toBe("/");
   });
 
@@ -99,7 +115,7 @@ describe("signed in", () => {
 
   test("log out ends the server session and returns to sign in", async () => {
     renderAt("/");
-    await screen.findByText("Your feed is quiet");
+    await screen.findByText("You're not in a circle yet");
     userEvent.click(screen.getByRole("button", { name: /log out/i }));
     expect(await screen.findByRole("heading", { name: "Sign in to GawainBook" })).toBeInTheDocument();
     expect(axios.post).toHaveBeenCalledWith("/auth/logout");
@@ -109,7 +125,7 @@ describe("signed in", () => {
 
 test("the app never puts a userId in any request body", async () => {
   mockApi({ signedIn: true });
-  renderAt("/");
+  renderAt("/feed");
   await screen.findByText("Your feed is quiet");
   userEvent.type(screen.getByRole("textbox"), "Hello");
   axios.post.mockResolvedValueOnce({ data: { _id: "p1", userId: ME._id, desc: "Hello", likes: [], createdAt: new Date().toISOString() } });

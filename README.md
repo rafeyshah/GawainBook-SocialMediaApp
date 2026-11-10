@@ -34,8 +34,10 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 
 ## Screenshots
 
-| Sign in | Create account |
+| Your circles | A circle: who's where, and spoiler-locked discussions |
 | :---: | :---: |
+| <img src="docs/screenshots/circles-home.png" alt="Circles home screen" width="420"> | <img src="docs/screenshots/circle.png" alt="Circle page with locked discussions" width="420"> |
+| **Sign in** | **Create account** |
 | <img src="docs/screenshots/sign-in.png" alt="Sign-in page" width="420"> | <img src="docs/screenshots/create-account.png" alt="Create-account page" width="420"> |
 
 ## Features
@@ -47,6 +49,18 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 - Sign-in emails are case- and whitespace-insensitive; password hashes never leave the server
 - Log out from the top bar
 - Light and dark themes, remembered per browser
+
+**Reading circles (the home screen)**
+- Small groups reading the same book at their own pace
+- **Spoiler-safe chapter discussions:** a discussion stays locked, with its title and replies hidden, until *you* reach that chapter. The rule lives in one place (`src/policy.ts`) and is applied on every read path
+- "Who's where": see where each member is in the book
+- Public circles anyone can join, private circles with invite codes, organiser and moderator roles
+- Start discussions only about chapters you've reached; reply, and delete your own replies (moderators can delete any)
+
+**Books and library**
+- Shelves: *Want to read*, *Reading*, *Finished*, with chapter-by-chapter progress (private to you)
+- Book pages with chapters, your progress, and the circles reading them
+- Public-domain books to start: *Pride and Prejudice*, *The Wonderful Wizard of Oz*, *Persuasion*
 
 **Social**
 - Share posts with text and a photo, with no page reload, a 500-character limit and a live counter near the limit
@@ -67,8 +81,9 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 - [x] Real authentication: httpOnly session cookies, CSRF protection and rate limits ([D2](docs/decisions/0002-auth-session-cookies.md))
 - [x] Continuous integration: both test suites and the build run on every push
 - [x] Waitlist, privacy notice and Impressum (the waitlist opens once the legal details are set)
-- [ ] Bookshelves: *Want to read*, *Currently reading*, *Read*
-- [ ] Reading circles with chapter progress and spoiler-safe discussions
+- [x] Bookshelves: *Want to read*, *Reading*, *Finished*
+- [x] Reading circles with chapter progress and spoiler-safe discussions
+- [ ] Reporting, blocking and notifications (rest of Phase 1)
 - [ ] A spoiler-aware reading assistant for public-domain books
 - [ ] Password reset by email
 
@@ -199,6 +214,17 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 | `GET` | `/posts/profile/:username` | A user's posts |
 | `GET` | `/legal` | Public: Impressum details and whether the waitlist is open |
 | `POST` | `/waitlist` | Public: `{ email, favouriteGenre, organizesBookClub, consent: true }` |
+| `GET` | `/books`, `/books/:idOrSlug` | Books, with your shelf and progress |
+| `PUT` | `/books/:id/progress` | `{ shelf?, chapter? }`: set your shelf and/or chapter |
+| `GET` | `/shelves[?username=]` | Shelves (others' shelves never include chapters) |
+| `GET` | `/circles` | `{ mine, discover }` |
+| `POST` | `/circles` | Start a circle: `{ name, bookId, visibility, schedule?, description? }` |
+| `GET` | `/circles/:id` | A circle (404 if private and you're not a member) |
+| `POST` | `/circles/:id/join`, `/circles/join`, `/circles/:id/leave` | Join a public circle, join with `{ code }`, leave |
+| `GET` / `POST` | `/circles/:id/threads` | Discussions (later chapters come back locked) / start one `{ chapter, title, body? }` |
+| `GET` | `/threads/:id` | A discussion and its replies (403 with no content if locked) |
+| `POST` | `/threads/:id/comments` | Reply `{ body }` |
+| `DELETE` | `/comments/:id` | Delete your reply (moderators: any reply) |
 | `POST` | `/upload` | Upload an image (multipart field `file`; PNG, JPG, GIF or WebP, max 5 MB) → `{ filename }` |
 
 Uploaded images are served at `/images/<filename>`, which redirects to a signed, time-limited link in the private bucket.
@@ -224,6 +250,16 @@ The app deploys to [Render](https://render.com) using [`render.yaml`](render.yam
 1. In Render, choose **New → Blueprint** and select this repository.
 2. When prompted, paste the values from your `.env.local`: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_ENDPOINT_URL_S3`.
 3. After the deploy, open `/api/health` and check for `"db":"connected"` and `"storage":"neon"`.
+
+**Demo data (optional)**
+
+```bash
+cd Node-Rest-API
+npm run seed:demo -- --member=<your-username>   # sample readers, circles and discussions
+npm run seed:demo -- --remove                   # delete all of it
+```
+
+Sample accounts are clearly labelled ("Sample reader · demo account") and use the reserved `sample.gawainbook.invalid` email domain. The command prints their password. It's safe to run more than once, and `--remove` keeps real accounts.
 
 **Moving data from the old MongoDB database (once)**
 

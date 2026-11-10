@@ -30,6 +30,9 @@ export default async function globalSetup() {
     password: "postgres",
     port,
     persistent: false,
+    // Match Neon (UTF-8). Without this, Windows defaults to WIN1252, which
+    // can't store emoji.
+    initdbFlags: ["--encoding=UTF8", "--locale=C"],
     onLog: () => {},
   });
   await pg.initialise();

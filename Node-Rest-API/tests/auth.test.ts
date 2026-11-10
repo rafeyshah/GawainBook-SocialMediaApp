@@ -10,6 +10,26 @@ describe("normalizeEmail", () => {
   ])("%p → %p", (input, expected) => expect(normalizeEmail(input)).toBe(expected));
 });
 
+describe("password hashing compatibility", () => {
+  // A real hash made by the native `bcrypt` package before the switch to
+  // `bcryptjs` (the test account "claudetest", password "test123").
+  const NATIVE_BCRYPT_HASH = "$2b$10$yXOrqu1WEhRaBJ4I.Nt8iucJ8rWRcU1AMVPw2i2prwX9hB8zPpfu6";
+
+  test("existing $2b$ hashes still verify, so nobody is locked out", async () => {
+    const bcrypt = (await import("bcryptjs")).default;
+    expect(bcrypt.compareSync("test123", NATIVE_BCRYPT_HASH)).toBe(true);
+    expect(bcrypt.compareSync("Test123", NATIVE_BCRYPT_HASH)).toBe(false);
+  });
+
+  test("a user with a migrated native hash can sign in", async () => {
+    const { getDb } = await import("../src/db/client");
+    const { users } = await import("../src/db/schema");
+    await getDb().insert(users).values({ username: "legacy", email: "legacy@example.com", passwordHash: NATIVE_BCRYPT_HASH });
+    const res = await (await newClient()).post("/api/auth/login", { email: "legacy@example.com", password: "test123" });
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("POST /api/auth/register", () => {
   const valid = { username: "jane", email: "jane@example.com", password: "secret123" };
   const register = async (body: Record<string, unknown>) => (await newClient()).post("/api/auth/register", body);
