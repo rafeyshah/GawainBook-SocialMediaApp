@@ -14,13 +14,17 @@ const path = require("path");
 
 dotenv.config();
 
+let dbError = process.env.MONGO_URL ? null : "MONGO_URL is not set";
 mongoose
   .connect(process.env.MONGO_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err.message));
+  .catch((err) => {
+    dbError = err.message;
+    console.error("MongoDB connection error:", err.message);
+  });
 app.use("/images", express.static(path.join(__dirname, "public/images")));
 
 //middleware
@@ -46,6 +50,13 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
   } catch (error) {
     console.error(error);
   }
+});
+
+// Reports whether the database is reachable (no secrets included).
+app.get("/api/health", (req, res) => {
+  const states = ["disconnected", "connected", "connecting", "disconnecting"];
+  const db = states[mongoose.connection.readyState];
+  res.status(db === "connected" ? 200 : 503).json({ db, error: dbError });
 });
 
 app.use("/api/auth", authRoute);
