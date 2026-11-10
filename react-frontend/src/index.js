@@ -8,6 +8,16 @@ import axios from "axios";
 // them to the backend; in production the backend serves this app itself.
 axios.defaults.baseURL = "/api";
 
+// Apply the saved colour theme before the first render to avoid a flash.
+try {
+  const theme = localStorage.getItem("theme");
+  if (theme === "light" || theme === "dark") {
+    document.documentElement.setAttribute("data-theme", theme);
+  }
+} catch {
+  /* storage unavailable: follow the system setting */
+}
+
 ReactDOM.render(
   <React.StrictMode>
     <AuthContextProvider>
