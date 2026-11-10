@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: gawainbook
+    runtime: node
+    plan: free
+    branch: master
+    autoDeploy: true
+    buildCommand: >-
+      cd react-frontend && npm ci --legacy-peer-deps && CI=false npm run build &&
+      cd ../Node-Rest-API && npm ci
+    startCommand: cd Node-Rest-API && npm start
+    healthCheckPath: /
+    envVars:
+      # react-scripts 4 does not build on Node 17+.
+      - key: NODE_VERSION
+        value: 16.20.2
+      - key: MONGO_URL
+        sync: false
