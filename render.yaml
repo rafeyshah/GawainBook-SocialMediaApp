@@ -5,17 +5,25 @@ services:
     plan: free
     branch: master
     autoDeployTrigger: commit
-    buildCommand: >-
-      cd react-frontend && npm ci --legacy-peer-deps && CI=false npm run build &&
-      cd ../Node-Rest-API && npm ci --omit=dev
-    startCommand: cd Node-Rest-API && npm start
-    healthCheckPath: /
+    # The frontend builds with Node 16 (react-scripts 4) via npx; the server
+    # runs on Node 22. Migrations run automatically when the server starts.
+    buildCommand: npm ci && npm run install:all && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
     envVars:
-      # react-scripts 4 does not build on Node 17+.
       - key: NODE_VERSION
-        value: 16.20.2
-      # Test-only package; never download its MongoDB binary on Render.
-      - key: MONGOMS_DISABLE_POSTINSTALL
-        value: "1"
-      - key: MONGO_URL
+        value: "22"
+      # Neon Postgres (from `neon env pull` / the Neon console).
+      - key: DATABASE_URL
         sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      # Neon object storage (bucket "assets").
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_ENDPOINT_URL_S3
+        sync: false
+      - key: AWS_REGION
+        value: us-east-2

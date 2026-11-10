@@ -2,39 +2,70 @@
   "name": "rest-api",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "jest --runInBand"
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "npm run build && node dist/index.js",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "test": "jest --runInBand",
+    "db:generate": "drizzle-kit generate",
+    "migrate:mongo": "npm run build && node dist/scripts/migrateFromMongo.js"
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["<rootDir>/tests/**/*.test.js"],
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
-    "testTimeout": 60000
-  },
-  "config": {
-    "mongodbMemoryServer": {
-      "version": "6.0.14"
-    }
+    "transform": {
+      "^.+\\.ts$": [
+        "ts-jest",
+        {
+          "tsconfig": "tsconfig.test.json"
+        }
+      ]
+    },
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.ts"
+    ],
+    "globalSetup": "<rootDir>/tests/globalSetup.ts",
+    "globalTeardown": "<rootDir>/tests/globalTeardown.ts",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.ts"
+    ],
+    "testTimeout": 30000
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1165.0",
+    "@aws-sdk/s3-request-presigner": "^3.1165.0",
     "bcrypt": "^5.0.1",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
+    "drizzle-orm": "^0.45.4",
     "express": "^4.17.1",
     "helmet": "^4.4.1",
-    "mongoose": "^5.12.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.2",
     "nodemon": "^2.0.7",
-    "path": "^0.12.7"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/express": "^4.17.25",
+    "@types/jest": "^29.5.14",
+    "@types/morgan": "^1.9.10",
+    "@types/multer": "^1.4.13",
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^6.0.3",
+    "drizzle-kit": "^0.31.11",
+    "embedded-postgres": "^17.5.0-beta.15",
     "jest": "^29.7.0",
-    "mongodb-memory-server": "^9.5.0",
-    "supertest": "^6.3.4"
+    "mongoose": "^5.12.2",
+    "supertest": "^6.3.4",
+    "ts-jest": "^29.4.15",
+    "typescript": "5.9"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

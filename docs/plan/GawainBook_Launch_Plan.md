@@ -60,18 +60,17 @@ What exists in this repo now, compared with the concept's MVP:
 
 Write each one in `docs/decisions/` (one short file per decision: context, options, choice, reason). Interviewers ask about these, and writing them down is cheap.
 
-| # | Decision | Recommendation | Why |
-|---|---|---|---|
-| D1 | **Database** | **Move to PostgreSQL now** (managed, e.g. Neon or Supabase) with `pgvector` | Circles, members, progress and permissions are relational and need constraints. The AI layer needs vector search next to the same permission data. Production data is tiny today, so the move costs almost nothing now and much more later. |
-| D2 | **Auth method** | Session cookie (httpOnly, Secure, SameSite=Lax) with a signed session or a short-lived JWT, plus CSRF protection on state-changing routes | Keeps tokens out of JavaScript and localStorage; easy to explain in an interview. |
-| D3 | **TypeScript** | Adopt it incrementally: **all new files in TypeScript**; convert old files only when you touch them | Matches the target role without stopping work for a big rewrite. |
-| D4 | **Data access** | A typed query builder or ORM (e.g. Drizzle or Prisma) with migrations | Parameterized queries, migrations under version control, typed results. |
-| D5 | **First book** | ***Pride and Prejudice*** (Jane Austen, 61 chapters) as book #1. Optional book #2: *The Wonderful Wizard of Oz* (L. Frank Baum) for the fantasy audience | Both authors died more than 70 years ago and both books were first published before 1929, so they should be public domain in Germany and the US. Romance fits the target niche. **Verify the edition and source licence yourself before processing (see §8).** |
-| D6 | **AI provider** | **One provider: Anthropic Claude.** A small, fast model for routine answers; a larger model only if the evaluation shows it's needed | One integration and one cost model. Check current model names and prices in the provider docs when implementing. |
-| D7 | **Embeddings** | A dedicated embeddings provider (e.g. Voyage AI) or an open-source embedding model; choose after a small prototype | Claude doesn't generate embeddings. Keep the choice reversible: store the model name with each vector. |
-| D8 | **Hosting** | Keep Render for the web service; add a Render background worker in Phase 3; managed Postgres; object storage (e.g. Cloudflare R2 or S3) for images | Fewest moving parts. No Kubernetes or multiple clouds. |
-| D9 | **Existing posts feed** | Keep it, but **demote** it: circles become the home screen | Matches the concept's "relationships are the core value" and the deferral of a complex public feed. |
-
+| # | Decision | Recommendation | Why | Done |
+|---|---|---|---|:---:|
+| D1 | **Database** | **Move to PostgreSQL now** (managed, e.g. Neon or Supabase) with `pgvector` | Circles, members, progress and permissions are relational and need constraints. The AI layer needs vector search next to the same permission data. Production data is tiny today, so the move costs almost nothing now and much more later. | ✅ [record](../decisions/0001-database-postgresql.md) |
+| D2 | **Auth method** | Session cookie (httpOnly, Secure, SameSite=Lax) with a signed session or a short-lived JWT, plus CSRF protection on state-changing routes | Keeps tokens out of JavaScript and localStorage; easy to explain in an interview. | ✅ [record](../decisions/0002-auth-session-cookies.md) |
+| D3 | **TypeScript** | Adopt it incrementally: **all new files in TypeScript**; convert old files only when you touch them | Matches the target role without stopping work for a big rewrite. | ✅ [record](../decisions/0003-typescript-incremental.md) |
+| D4 | **Data access** | A typed query builder or ORM (e.g. Drizzle or Prisma) with migrations | Parameterized queries, migrations under version control, typed results. | ✅ [record](../decisions/0004-data-access-drizzle.md) |
+| D5 | **First book** | ***Pride and Prejudice*** (Jane Austen, 61 chapters) as book #1. Optional book #2: *The Wonderful Wizard of Oz* (L. Frank Baum) for the fantasy audience | Both authors died more than 70 years ago and both books were first published before 1929, so they should be public domain in Germany and the US. Romance fits the target niche. **Verify the edition and source licence yourself before processing (see §8).** | ✅ [record](../decisions/0005-first-book.md) |
+| D6 | **AI provider** | **One provider: Anthropic Claude.** A small, fast model for routine answers; a larger model only if the evaluation shows it's needed | One integration and one cost model. Check current model names and prices in the provider docs when implementing. | ✅ [record](../decisions/0006-ai-provider-claude.md) |
+| D7 | **Embeddings** | A dedicated embeddings provider (e.g. Voyage AI) or an open-source embedding model; choose after a small prototype | Claude doesn't generate embeddings. Keep the choice reversible: store the model name with each vector. | ✅ [record](../decisions/0007-embeddings.md) |
+| D8 | **Hosting** | Keep Render for the web service; add a Render background worker in Phase 3; managed Postgres; object storage (e.g. Cloudflare R2 or S3) for images | Fewest moving parts. No Kubernetes or multiple clouds. | ✅ [record](../decisions/0008-hosting.md) |
+| D9 | **Existing posts feed** | Keep it, but **demote** it: circles become the home screen | Matches the concept's "relationships are the core value" and the deferral of a complex public feed. | ✅ [record](../decisions/0009-demote-posts-feed.md) |
 ---
 
 ## 3. Week 1: Foundation (Tue 10 – Mon 16 Nov)
@@ -102,7 +101,7 @@ Goal: make the existing app safe to build on, lock the decisions, and start talk
 - [ ] Nobody can act as another user (proved by tests)
 - [ ] Production runs on Postgres; MongoDB retired
 - [ ] Uploads survive a redeploy
-- [ ] Decisions D1–D9 written
+- [x] Decisions D1–D9 written ✅ ([decision log](../decisions/README.md))
 - [ ] CI runs on every push
 - [ ] 3+ interviews booked; waitlist live
 

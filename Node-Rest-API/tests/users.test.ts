@@ -1,8 +1,8 @@
-const { app, request, createUser, NONEXISTENT_ID } = require("./helpers");
+import { app, request, createUser, createPost, NONEXISTENT_ID, NONEXISTENT_UUID } from "./helpers";
 
-const follow = (targetId, userId) => request(app).put(`/api/users/${targetId}/follow`).send({ userId });
-const unfollow = (targetId, userId) => request(app).put(`/api/users/${targetId}/unfollow`).send({ userId });
-const getUser = (query) => request(app).get("/api/users").query(query);
+const follow = (targetId: string, userId?: string) => request(app).put(`/api/users/${targetId}/follow`).send({ userId });
+const unfollow = (targetId: string, userId?: string) => request(app).put(`/api/users/${targetId}/unfollow`).send({ userId });
+const getUser = (query: object) => request(app).get("/api/users").query(query);
 
 describe("GET /api/users", () => {
   test("finds a user by username or id without private fields", async () => {
@@ -11,26 +11,31 @@ describe("GET /api/users", () => {
       const res = await getUser(query);
       expect(res.status).toBe(200);
       expect(res.body.username).toBe("jane");
-      expect(res.body).not.toHaveProperty("password");
-      expect(res.body).not.toHaveProperty("email");
-      expect(res.body).not.toHaveProperty("isAdmin");
+      for (const secret of ["password", "passwordHash", "email", "isAdmin"]) expect(res.body).not.toHaveProperty(secret);
     }
+  });
+
+  test("username lookup is exact (no partial or case-insensitive match)", async () => {
+    await createUser({ username: "jane" });
+    expect((await getUser({ username: "Jane" })).status).toBe(404);
+    expect((await getUser({ username: "jan" })).status).toBe(404);
   });
 
   test.each([
     ["unknown username", { username: "ghost" }],
-    ["unknown id", { userId: NONEXISTENT_ID }],
+    ["unknown ObjectId-style id", { userId: NONEXISTENT_ID }],
+    ["unknown UUID", { userId: NONEXISTENT_UUID }],
     ["malformed id", { userId: "not-an-id" }],
+    ["SQL in the id", { userId: "1' or '1'='1" }],
     ["no query", {}],
   ])("returns 404 for %s", async (_name, query) => {
-    const res = await getUser(query);
-    expect(res.status).toBe(404);
+    expect((await getUser(query)).status).toBe(404);
   });
 });
 
 describe("follow / unfollow", () => {
-  let a;
-  let b;
+  let a: Awaited<ReturnType<typeof createUser>>;
+  let b: Awaited<ReturnType<typeof createUser>>;
   beforeEach(async () => {
     a = await createUser();
     b = await createUser();
@@ -40,17 +45,19 @@ describe("follow / unfollow", () => {
     const res = await follow(b._id, a._id);
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ following: true });
-
-    const target = (await getUser({ userId: b._id })).body;
-    const me = (await getUser({ userId: a._id })).body;
-    expect(target.followers).toEqual([a._id]);
-    expect(me.followings).toEqual([b._id]);
+    expect((await getUser({ userId: b._id })).body.followers).toEqual([a._id]);
+    expect((await getUser({ userId: a._id })).body.followings).toEqual([b._id]);
   });
 
   test("following twice is rejected and does not duplicate", async () => {
     await follow(b._id, a._id);
-    const res = await follow(b._id, a._id);
-    expect(res.status).toBe(409);
+    expect((await follow(b._id, a._id)).status).toBe(409);
+    expect((await getUser({ userId: b._id })).body.followers).toHaveLength(1);
+  });
+
+  test("two simultaneous follow requests create one follow", async () => {
+    const results = await Promise.all([follow(b._id, a._id), follow(b._id, a._id)]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
     expect((await getUser({ userId: b._id })).body.followers).toHaveLength(1);
   });
 
@@ -61,6 +68,11 @@ describe("follow / unfollow", () => {
     expect(res.body).toEqual({ following: false });
     expect((await getUser({ userId: b._id })).body.followers).toEqual([]);
     expect((await getUser({ userId: a._id })).body.followings).toEqual([]);
+  });
+
+  test("follows are one-directional", async () => {
+    await follow(b._id, a._id);
+    expect((await getUser({ userId: a._id })).body.followers).toEqual([]);
   });
 
   test("unfollowing someone you don't follow is rejected", async () => {
@@ -74,32 +86,37 @@ describe("follow / unfollow", () => {
 
   test.each([
     ["unknown target", () => [NONEXISTENT_ID, a._id], 404],
+    ["unknown UUID target", () => [NONEXISTENT_UUID, a._id], 404],
     ["malformed target", () => ["bad-id", a._id], 404],
     ["unknown follower", () => [b._id, NONEXISTENT_ID], 404],
     ["missing follower id", () => [b._id, undefined], 400],
   ])("handles %s", async (_name, args, status) => {
-    const [target, me] = args();
+    const [target, me] = (args as () => [string, string | undefined])();
     expect((await follow(target, me)).status).toBe(status);
   });
 });
 
 describe("GET /api/users/friends/:userId", () => {
-  test("lists the people a user follows with public fields only", async () => {
+  test("lists the people a user follows (alphabetically) with public fields only", async () => {
     const a = await createUser();
-    const b = await createUser({ username: "bob" });
-    await follow(b._id, a._id);
+    const zoe = await createUser({ username: "zoe" });
+    const bob = await createUser({ username: "bob" });
+    await follow(zoe._id, a._id);
+    await follow(bob._id, a._id);
     const res = await request(app).get(`/api/users/friends/${a._id}`);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([{ _id: b._id, username: "bob", profilePicture: "" }]);
+    expect(res.body).toEqual([
+      { _id: bob._id, username: "bob", profilePicture: "" },
+      { _id: zoe._id, username: "zoe", profilePicture: "" },
+    ]);
   });
 
   test("returns an empty list for someone who follows nobody", async () => {
     const a = await createUser();
-    const res = await request(app).get(`/api/users/friends/${a._id}`);
-    expect(res.body).toEqual([]);
+    expect((await request(app).get(`/api/users/friends/${a._id}`)).body).toEqual([]);
   });
 
-  test("skips deleted accounts instead of crashing", async () => {
+  test("deleted accounts disappear from friend lists (cascade)", async () => {
     const a = await createUser();
     const b = await createUser();
     await follow(b._id, a._id);
@@ -120,20 +137,19 @@ describe("PUT /api/users/:id", () => {
     const a = await createUser();
     const res = await request(app)
       .put(`/api/users/${a._id}`)
-      .send({ userId: a._id, desc: "Fantasy fan", city: "Lahore" });
+      .send({ userId: a._id, desc: "Fantasy fan", city: "Lahore", from: "Karachi", relationship: 2 });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ desc: "Fantasy fan", city: "Lahore" });
+    expect(res.body).toMatchObject({ desc: "Fantasy fan", city: "Lahore", from: "Karachi", relationship: 2 });
   });
 
-  test("ignores fields that must not be self-edited (isAdmin, followers, email)", async () => {
+  test("ignores fields that must not be self-edited (isAdmin, followers, email, username)", async () => {
     const a = await createUser({ email: "a@example.com" });
     await request(app)
       .put(`/api/users/${a._id}`)
-      .send({ userId: a._id, isAdmin: true, followers: ["x"], email: "evil@example.com" });
+      .send({ userId: a._id, isAdmin: true, followers: ["x"], email: "evil@example.com", username: "admin" });
     const login = await request(app).post("/api/auth/login").send({ email: "a@example.com", password: "secret123" });
     expect(login.status).toBe(200);
-    expect(login.body.isAdmin).toBe(false);
-    expect(login.body.followers).toEqual([]);
+    expect(login.body).toMatchObject({ isAdmin: false, followers: [], username: a.username });
   });
 
   test("changes the password (hashed) so the new one works and the old one doesn't", async () => {
@@ -145,41 +161,53 @@ describe("PUT /api/users/:id", () => {
     expect(newPw.status).toBe(200);
   });
 
-  test("rejects a too-short new password", async () => {
+  test.each([
+    ["a too-short new password", { password: "123" }],
+    ["an invalid relationship value", { relationship: 9 }],
+    ["a non-numeric relationship", { relationship: "married" }],
+    ["a bio over 200 characters", { desc: "x".repeat(201) }],
+  ])("rejects %s with 400", async (_name, body) => {
     const a = await createUser();
-    const res = await request(app).put(`/api/users/${a._id}`).send({ userId: a._id, password: "123" });
-    expect(res.status).toBe(400);
+    expect((await request(app).put(`/api/users/${a._id}`).send({ userId: a._id, ...body })).status).toBe(400);
   });
 
   test("forbids editing someone else's account", async () => {
     const a = await createUser();
     const b = await createUser();
-    const res = await request(app).put(`/api/users/${b._id}`).send({ userId: a._id, desc: "hacked" });
-    expect(res.status).toBe(403);
+    expect((await request(app).put(`/api/users/${b._id}`).send({ userId: a._id, desc: "hacked" })).status).toBe(403);
   });
 
-  test("rejects an invalid relationship value", async () => {
-    const a = await createUser();
-    const res = await request(app).put(`/api/users/${a._id}`).send({ userId: a._id, relationship: 9 });
-    expect(res.status).toBe(400);
+  test("returns 404 for an account that doesn't exist", async () => {
+    const res = await request(app).put(`/api/users/${NONEXISTENT_UUID}`).send({ userId: NONEXISTENT_UUID, desc: "x" });
+    expect(res.status).toBe(404);
   });
 });
 
 describe("DELETE /api/users/:id", () => {
-  test("deletes your own account and removes you from others' lists", async () => {
+  test("deletes your account and everything that belongs to it", async () => {
     const a = await createUser();
     const b = await createUser();
     await follow(b._id, a._id);
+    const post = await createPost(a._id);
+    await request(app).put(`/api/posts/${(await createPost(b._id))._id}/like`).send({ userId: a._id });
+
     const res = await request(app).delete(`/api/users/${a._id}`).send({ userId: a._id });
     expect(res.status).toBe(200);
     expect((await getUser({ userId: a._id })).status).toBe(404);
     expect((await getUser({ userId: b._id })).body.followers).toEqual([]);
+    expect((await request(app).get(`/api/posts/${post._id}`)).status).toBe(404);
+    expect((await request(app).get(`/api/posts/profile/${b.username}`)).body[0].likes).toEqual([]);
   });
 
   test("forbids deleting someone else's account", async () => {
     const a = await createUser();
     const b = await createUser();
-    const res = await request(app).delete(`/api/users/${b._id}`).send({ userId: a._id });
-    expect(res.status).toBe(403);
+    expect((await request(app).delete(`/api/users/${b._id}`).send({ userId: a._id })).status).toBe(403);
+  });
+
+  test("deleting twice returns 404 the second time", async () => {
+    const a = await createUser();
+    await request(app).delete(`/api/users/${a._id}`).send({ userId: a._id });
+    expect((await request(app).delete(`/api/users/${a._id}`).send({ userId: a._id })).status).toBe(404);
   });
 });

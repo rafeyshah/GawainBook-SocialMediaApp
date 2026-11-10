@@ -6,14 +6,16 @@
   <a href="https://gawainbook.onrender.com"><strong>Live demo</strong></a> ·
   <a href="#getting-started">Run locally</a> ·
   <a href="#api-reference">API</a> ·
-  <a href="#roadmap">Roadmap</a>
+  <a href="#roadmap">Roadmap</a> ·
+  <a href="docs/decisions/README.md">Decision log</a>
 </p>
 
 <p align="center">
-  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white">
+  <img alt="PostgreSQL on Neon" src="https://img.shields.io/badge/PostgreSQL-Neon-00E599?logo=postgresql&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white">
+  <img alt="Drizzle ORM" src="https://img.shields.io/badge/Drizzle_ORM-C5F74F?logo=drizzle&logoColor=black">
   <img alt="Express" src="https://img.shields.io/badge/Express-000000?logo=express&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React_17-20232A?logo=react&logoColor=61DAFB">
-  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white">
   <img alt="Deployed on Render" src="https://img.shields.io/badge/Deployed_on-Render-46E3B7?logo=render&logoColor=black">
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue">
 </p>
@@ -24,7 +26,7 @@
 
 **GawainBook** is a social network for readers. Share what you're reading, post your thoughts and quotes, follow other readers and see what the people you trust are reading next.
 
-It's a full-stack MERN app (MongoDB, Express, React, Node.js), deployed as a single service: the Express API also serves the React app, so the whole thing runs at one URL.
+It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API backed by **PostgreSQL on Neon**, with photos in **Neon object storage**. It's deployed as a single service: the Express API also serves the React app, so the whole thing runs at one URL.
 
 > **Live demo:** https://gawainbook.onrender.com
 > Runs on Render's free plan, which sleeps after 15 minutes without visitors. The first load can take 30–60 seconds while it wakes up.
@@ -46,6 +48,7 @@ It's a full-stack MERN app (MongoDB, Express, React, Node.js), deployed as a sin
 
 **Social**
 - Share posts with text and a photo, with no page reload, a 500-character limit and a live counter near the limit
+- Photos are stored in a private Neon bucket and served through short-lived signed links, so they survive redeploys
 - A home feed of your posts and posts from people you follow, newest first
 - Profile pages with bio, location, join date, and follower and following counts
 - Follow and unfollow other readers
@@ -55,97 +58,112 @@ It's a full-stack MERN app (MongoDB, Express, React, Node.js), deployed as a sin
 
 ## Roadmap
 
-These features are planned to make GawainBook more book-focused. **None of them are built yet.**
+The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook_Launch_Plan.md), and the reasoning behind each technical choice is in the [decision log](docs/decisions/README.md).
 
+- [x] PostgreSQL on Neon, with migrations ([D1](docs/decisions/0001-database-postgresql.md), [D4](docs/decisions/0004-data-access-drizzle.md))
+- [x] Image uploads in object storage ([D8](docs/decisions/0008-hosting.md))
+- [ ] Real authentication with session cookies ([D2](docs/decisions/0002-auth-session-cookies.md)); **the API still trusts `userId` from requests**
 - [ ] Bookshelves: *Want to read*, *Currently reading*, *Read*
-- [ ] Book pages with ratings and reviews
-- [ ] Quote posts tied to a book and page
-- [ ] Reading goals and progress updates
-- [ ] Book clubs and group discussions
-- [ ] Search for books and readers
-- [ ] Image uploads to cloud storage (Cloudinary or S3)
+- [ ] Reading circles with chapter progress and spoiler-safe discussions
+- [ ] A spoiler-aware reading assistant for public-domain books
 - [ ] Password reset by email
-- [ ] Dark mode across the whole app
 
 ## Tech stack
 
 | Layer | Technology |
 | --- | --- |
 | Frontend | React 17, React Router 5, Material UI 4 icons, Axios |
-| Backend | Node.js, Express 4, Mongoose 5, bcrypt, Helmet, Multer |
-| Database | MongoDB Atlas |
+| Backend | Node.js 22, Express 4, **TypeScript**, bcrypt, Helmet, Multer |
+| Database | **PostgreSQL on Neon**, **Drizzle ORM** + SQL migrations, node-postgres |
+| File storage | **Neon object storage** (S3-compatible, private bucket, presigned URLs) |
+| Testing | Jest, Supertest, React Testing Library, a real embedded PostgreSQL for backend tests |
 | Hosting | Render (single web service, auto-deploys on every push to `master`) |
 
 ## Project structure
 
 ```
 .
-├── Node-Rest-API/          Express API (also serves the built React app in production)
-│   ├── models/             Mongoose models (User, Post)
-│   ├── routes/             /api/auth, /api/users, /api/posts
-│   ├── public/images/      Uploaded and default images (served at /images)
-│   └── index.js            App entry: DB connection, middleware, routes, /api/health
-├── react-frontend/         React app (Create React App)
-│   └── src/
-│       ├── pages/          auth, home, profile
-│       ├── components/     topbar, feed, post, share, sidebar, rightbar…
-│       └── context/        Auth state (React context + reducer)
-├── docs/                   README banner and screenshots
-└── render.yaml             Render deployment blueprint
+├── Node-Rest-API/            Express API in TypeScript (also serves the built React app)
+│   ├── src/
+│   │   ├── db/               Drizzle schema (users, follows, posts, post_likes) and connection
+│   │   ├── routes/           /api/auth, /api/users, /api/posts
+│   │   ├── storage.ts        Neon object storage (or local disk as a fallback)
+│   │   ├── app.ts            Express app: security headers, uploads, images, routes
+│   │   ├── index.ts          Entry point: env, migrations, server
+│   │   └── scripts/          One-off MongoDB → Postgres migration
+│   ├── drizzle/              SQL migrations (generated by drizzle-kit, committed)
+│   ├── public/images/        Bundled default images (avatars, placeholders)
+│   └── tests/                API, database, storage and migration tests
+├── react-frontend/           React app (Create React App)
+├── docs/                     Banner, screenshots, decision log, launch plan
+├── neon.ts                   Neon infrastructure as code (Postgres + "assets" bucket)
+├── package.json              Root scripts: build, start, test
+└── render.yaml               Render deployment blueprint
 ```
 
 ## Getting started
 
 ### Prerequisites
 
-- **Node.js 16** for the frontend. It uses `react-scripts` 4, which doesn't run on Node 17 or newer. On a newer Node, use the `npx -p node@16` command below.
-- **A MongoDB database.** A free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster works.
+- **Node.js 20 or newer.** The frontend's `react-scripts` 4 only runs on Node 16, so the root scripts run it through `npx -p node@16` automatically.
+- **A Neon project** with Postgres and object storage. The [Neon CLI](https://neon.com/docs/cli) sets it up for you.
 
-### 1. Clone
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/rafeyshah/GawainBook-SocialMediaApp.git
 cd GawainBook-SocialMediaApp
+npm ci && npm run install:all
 ```
 
-### 2. Configure the backend
-
-Copy the example env file and add your MongoDB connection string:
+### 2. Connect to Neon
 
 ```bash
-cp Node-Rest-API/.env.example Node-Rest-API/.env
+npm i -g neon@latest
+neon login
+neon link            # pick your project and branch
+neon deploy          # creates the "assets" bucket from neon.ts
 ```
 
-| Variable | Required | Description |
-| --- | :---: | --- |
-| `MONGO_URL` | ✅ | MongoDB connection string, e.g. `mongodb+srv://<user>:<password>@<cluster>.mongodb.net/gawainbook?retryWrites=true&w=majority` |
-| `PORT` | | API port. Defaults to `8800`. |
+`neon deploy` writes the connection variables into `.env.local` in the repo root (it's git-ignored). The backend reads it automatically.
 
-In Atlas, add your IP address under **Network Access**, or `0.0.0.0/0` for development.
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | Pooled Postgres URL, used by the app |
+| `DATABASE_URL_UNPOOLED` | Direct Postgres URL, used for migrations |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION` | Neon object storage credentials. Without them, uploads are saved to local disk |
+| `PORT` | API port. Defaults to `8800` |
 
-### 3. Start the API
+> Tip: use `neon checkout dev --create` to work on your own copy-on-write branch of the database and files instead of production.
+
+### 3. Run it
 
 ```bash
-cd Node-Rest-API
-npm install
-npm start
+npm run build     # builds the React app and the TypeScript API
+npm start         # http://localhost:8800 (runs migrations on startup)
 ```
 
-Check that the database is connected: http://localhost:8800/api/health should return `{"db":"connected"}`.
+Check http://localhost:8800/api/health. It should return `{"db":"connected","error":null,"storage":"neon"}`.
 
-### 4. Start the frontend
-
-In a second terminal:
+For frontend development with live reload, run the API as above, then in a second terminal:
 
 ```bash
 cd react-frontend
-npm install --legacy-peer-deps
 npx -p node@16 node node_modules/react-scripts/bin/react-scripts.js start
 ```
 
 Open http://localhost:3000. The dev server forwards `/api` requests to the API on port 8800.
 
-> If you change `proxy` in `react-frontend/package.json`, restart the frontend dev server. It reads that setting only at startup.
+### Changing the database schema
+
+Edit `Node-Rest-API/src/db/schema.ts`, then generate a migration and commit it:
+
+```bash
+cd Node-Rest-API
+npm run db:generate
+```
+
+Migrations are applied automatically, over the direct connection, when the server starts.
 
 ## API reference
 
@@ -153,57 +171,62 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `GET` | `/health` | Database connection status |
+| `GET` | `/health` | Database and storage status |
 | `POST` | `/auth/register` | Create an account: `{ username, email, password }` |
 | `POST` | `/auth/login` | Sign in: `{ email, password }` |
 | `GET` | `/users?username=` or `/users?userId=` | Get a user |
-| `PUT` | `/users/:id` | Update a user |
-| `DELETE` | `/users/:id` | Delete a user |
+| `PUT` | `/users/:id` | Update your profile: `desc`, `city`, `from`, `relationship`, `profilePicture`, `coverPicture`, `password` |
+| `DELETE` | `/users/:id` | Delete your account (posts, likes and follows go with it) |
 | `GET` | `/users/friends/:userId` | List the people a user follows |
 | `PUT` | `/users/:id/follow` | Follow a user: `{ userId }` |
 | `PUT` | `/users/:id/unfollow` | Unfollow a user: `{ userId }` |
-| `POST` | `/posts` | Create a post |
-| `PUT` | `/posts/:id` | Update a post |
-| `DELETE` | `/posts/:id` | Delete a post |
+| `POST` | `/posts` | Create a post: `{ userId, desc, img? }` |
+| `PUT` | `/posts/:id` | Edit your post's text |
+| `DELETE` | `/posts/:id` | Delete your post |
 | `PUT` | `/posts/:id/like` | Like or unlike a post: `{ userId }` → `{ liked, likes }` |
 | `GET` | `/posts/:id` | Get a post |
 | `GET` | `/posts/timeline/:userId` | A user's feed (their posts plus posts from people they follow) |
 | `GET` | `/posts/profile/:username` | A user's posts |
 | `POST` | `/upload` | Upload an image (multipart field `file`; PNG, JPG, GIF or WebP, max 5 MB) → `{ filename }` |
 
+Uploaded images are served at `/images/<filename>`, which redirects to a signed, time-limited link in the private bucket.
+
 ## Testing
 
-Both halves of the app have automated tests. They cover success paths, validation, missing and invalid data, permissions, failure handling and the security fixes.
-
-**Backend** (Jest + Supertest against an in-memory MongoDB, so your real database is never touched):
+Both halves of the app have automated tests. They cover success paths, validation, missing and invalid data, permissions, concurrency, database constraints, failure handling and the security fixes.
 
 ```bash
-cd Node-Rest-API
-npm test
+npm test                  # everything
+npm run test:backend      # API + database tests
+npm run test:frontend     # React tests
 ```
 
-The first run downloads a MongoDB binary (about 500 MB). To use one you already have, set `MONGOMS_SYSTEM_BINARY` to its path.
-
-**Frontend** (Jest + React Testing Library):
-
-```bash
-cd react-frontend
-npx -p node@16 node node_modules/react-scripts/bin/react-scripts.js test --watchAll=false
-```
+- **Backend:** Jest and Supertest against a **real, throwaway PostgreSQL server** (embedded-postgres), with the real migrations applied, so constraints and cascades are tested exactly as they run in production. Object storage is tested with a fake S3 client. Nothing touches Neon.
+- **Frontend:** Jest and React Testing Library.
 
 ## Deployment
 
-The app deploys to [Render](https://render.com) using [`render.yaml`](render.yaml). Every push to `master` rebuilds the React app and redeploys it together with the API.
+The app deploys to [Render](https://render.com) using [`render.yaml`](render.yaml). Every push to `master` rebuilds the React app and the API and redeploys them together; migrations run when the new server starts.
 
 **One-time setup**
-1. In MongoDB Atlas → **Network Access**, allow `0.0.0.0/0`. Render's outbound IP addresses aren't fixed.
-2. In Render, choose **New → Blueprint** and select this repository.
-3. Enter `MONGO_URL` when prompted.
-4. After the first deploy, open `/api/health` and check for `"db":"connected"`.
+1. In Render, choose **New → Blueprint** and select this repository.
+2. When prompted, paste the values from your `.env.local`: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_ENDPOINT_URL_S3`.
+3. After the deploy, open `/api/health` and check for `"db":"connected"` and `"storage":"neon"`.
+
+**Moving data from the old MongoDB database (once)**
+
+```bash
+# add MONGO_URL to Node-Rest-API/.env, then:
+cd Node-Rest-API
+npm run migrate:mongo -- --dry-run   # shows what would move
+npm run migrate:mongo                # copies users, follows, posts, likes and images
+```
+
+It keeps user ids and password hashes, so existing accounts keep working, and it's safe to run more than once.
 
 **Known limitations on the free plan**
-- Uploaded images are saved to the server's disk, which Render wipes on every deploy and restart. Cloud storage is on the roadmap.
-- The service sleeps when idle, so the first request afterwards is slow.
+- The web service sleeps when idle, so the first request afterwards is slow.
+- Neon's free compute suspends when idle; the first query after that takes a little longer.
 
 ## Contributing
 

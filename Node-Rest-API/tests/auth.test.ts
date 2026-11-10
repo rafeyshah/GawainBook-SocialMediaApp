@@ -1,7 +1,17 @@
-const { app, request, createUser } = require("./helpers");
+import { app, request, createUser } from "./helpers";
+import { normalizeEmail } from "../src/routes/auth";
 
-const register = (body) => request(app).post("/api/auth/register").send(body);
-const login = (body) => request(app).post("/api/auth/login").send(body);
+const register = (body: Record<string, unknown>) => request(app).post("/api/auth/register").send(body);
+const login = (body: Record<string, unknown>) => request(app).post("/api/auth/login").send(body);
+
+describe("normalizeEmail", () => {
+  test.each([
+    ["  Jane@Example.COM ", "jane@example.com"],
+    [undefined, ""],
+    [null, ""],
+    [42, "42"],
+  ])("%p → %p", (input, expected) => expect(normalizeEmail(input)).toBe(expected));
+});
 
 describe("POST /api/auth/register", () => {
   const valid = { username: "jane", email: "jane@example.com", password: "secret123" };
@@ -9,12 +19,13 @@ describe("POST /api/auth/register", () => {
   test("creates an account and never returns the password hash", async () => {
     const res = await register(valid);
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ username: "jane", email: "jane@example.com" });
-    expect(res.body._id).toBeDefined();
+    expect(res.body).toMatchObject({ username: "jane", email: "jane@example.com", followers: [], followings: [], isAdmin: false });
+    expect(res.body._id).toMatch(/^[0-9a-f-]{36}$/);
     expect(res.body).not.toHaveProperty("password");
+    expect(res.body).not.toHaveProperty("passwordHash");
   });
 
-  test("normalises email to lowercase and trims whitespace", async () => {
+  test("normalises email to lowercase and trims the username", async () => {
     const res = await register({ ...valid, email: "  Jane@Example.COM ", username: "  jane  " });
     expect(res.status).toBe(201);
     expect(res.body.email).toBe("jane@example.com");
@@ -35,6 +46,11 @@ describe("POST /api/auth/register", () => {
     expect(res.body.error).toMatch(message);
   });
 
+  test("accepts boundary lengths (3 and 20 character usernames, 6 character password)", async () => {
+    expect((await register({ ...valid, username: "abc", password: "123456" })).status).toBe(201);
+    expect((await register({ username: "a".repeat(20), email: "b@example.com", password: "123456" })).status).toBe(201);
+  });
+
   test("rejects a duplicate email (any case) with 409", async () => {
     await register(valid);
     const res = await register({ ...valid, username: "other", email: "JANE@example.com" });
@@ -49,9 +65,18 @@ describe("POST /api/auth/register", () => {
     expect(res.body.error).toMatch(/username is taken/);
   });
 
+  test("two simultaneous sign-ups with the same email: exactly one wins", async () => {
+    const [a, b] = await Promise.all([register(valid), register({ ...valid, username: "jane2" })]);
+    expect([a.status, b.status].sort()).toEqual([201, 409]);
+  });
+
   test("handles an empty body without crashing", async () => {
-    const res = await register({});
-    expect(res.status).toBe(400);
+    expect((await register({})).status).toBe(400);
+  });
+
+  test("rejects a body over 100 KB", async () => {
+    const res = await register({ ...valid, padding: "x".repeat(120_000) });
+    expect(res.status).toBe(413);
   });
 });
 
@@ -62,17 +87,15 @@ describe("POST /api/auth/login", () => {
     const res = await login({ email: "sam@example.com", password: "secret123" });
     expect(res.status).toBe(200);
     expect(res.body.username).toBe("sam");
-    expect(res.body).not.toHaveProperty("password");
+    expect(res.body).not.toHaveProperty("passwordHash");
   });
 
   test("ignores email case and surrounding spaces", async () => {
-    const res = await login({ email: "  SAM@Example.com ", password: "secret123" });
-    expect(res.status).toBe(200);
+    expect((await login({ email: "  SAM@Example.com ", password: "secret123" })).status).toBe(200);
   });
 
   test("password is case-sensitive", async () => {
-    const res = await login({ email: "sam@example.com", password: "SECRET123" });
-    expect(res.status).toBe(401);
+    expect((await login({ email: "sam@example.com", password: "SECRET123" })).status).toBe(401);
   });
 
   test("wrong password and unknown email give the same message (no account enumeration)", async () => {
@@ -87,11 +110,10 @@ describe("POST /api/auth/login", () => {
     ["empty body", {}],
     ["missing password", { email: "sam@example.com" }],
     ["missing email", { password: "secret123" }],
-    ["non-string values", { email: { $gt: "" }, password: "secret123" }],
+    ["an operator object instead of an email", { email: { $gt: "" }, password: "secret123" }],
+    ["SQL in the email", { email: "' or 1=1 --", password: "secret123" }],
   ])("rejects %s with 401 and keeps running", async (_name, body) => {
-    const res = await login(body);
-    expect(res.status).toBe(401);
-    const health = await request(app).get("/api/health");
-    expect(health.status).toBe(200);
+    expect((await login(body)).status).toBe(401);
+    expect((await request(app).get("/api/health")).status).toBe(200);
   });
 });
