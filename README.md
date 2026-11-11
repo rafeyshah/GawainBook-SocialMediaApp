@@ -34,11 +34,22 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 
 ## Screenshots
 
-| Your circles | A circle: who's where, and spoiler-locked discussions |
+<p align="center">
+  <img src="docs/screenshots/circle.png" alt="A reading circle: members' progress along the book, open discussions and spoiler-locked ones" width="900">
+  <br><sub><b>A reading circle.</b> Everyone's place in the book on the right; discussions ahead of you stay locked until you get there.</sub>
+</p>
+
+| Your circles | A chapter discussion |
 | :---: | :---: |
-| <img src="docs/screenshots/circles-home.png" alt="Circles home screen" width="420"> | <img src="docs/screenshots/circle.png" alt="Circle page with locked discussions" width="420"> |
-| **Sign in** | **Create account** |
-| <img src="docs/screenshots/sign-in.png" alt="Sign-in page" width="420"> | <img src="docs/screenshots/create-account.png" alt="Create-account page" width="420"> |
+| <img src="docs/screenshots/circles-home.png" alt="Home screen: continue reading and your circles" width="440"> | <img src="docs/screenshots/discussion.png" alt="A chapter discussion with replies" width="440"> |
+| **Book page with chapter map** | **Your library and shelves** |
+| <img src="docs/screenshots/book.png" alt="Book page with chapter map and circles reading it" width="440"> | <img src="docs/screenshots/library.png" alt="Library grid of books" width="440"> |
+| **Profile with photo and cover** | **Dark mode** |
+| <img src="docs/screenshots/profile.png" alt="Reader profile with profile photo and cover image" width="440"> | <img src="docs/screenshots/circle-dark.png" alt="Circle page in dark mode" width="440"> |
+| **On your phone** | **Sign in** |
+| <img src="docs/screenshots/mobile-circle.png" alt="Circle page on a phone with tab navigation" width="300"> | <img src="docs/screenshots/sign-in.png" alt="Sign-in page" width="440"> |
+
+<sub>Captured from the live demo with the sample readers.</sub>
 
 ## Features
 
@@ -49,6 +60,7 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 - Sign-in emails are case- and whitespace-insensitive; password hashes never leave the server
 - Log out from the top bar
 - Light and dark themes, remembered per browser
+- Full-width layout with a fixed sidebar and context panels (who's where, chapter map) on wide screens, and a tab bar on phones
 
 **Reading circles (the home screen)**
 - Small groups reading the same book at their own pace
@@ -67,6 +79,7 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 - Photos are stored in a private Neon bucket and served through short-lived signed links, so they survive redeploys
 - A home feed of your posts and posts from people you follow, newest first
 - Profile pages with bio, location, join date, and follower and following counts
+- Profile photo and cover image: upload, change or remove them from your profile; the new photo shows everywhere straight away
 - Follow and unfollow other readers
 - Like and unlike posts; likes update instantly and roll back if the server rejects them
 - A sidebar listing the readers you follow
@@ -240,7 +253,9 @@ npm run test:frontend     # React tests
 ```
 
 - **Backend:** Jest and Supertest against a **real, throwaway PostgreSQL server** (embedded-postgres), with the real migrations applied, so constraints and cascades are tested exactly as they run in production. Object storage is tested with a fake S3 client. Nothing touches Neon.
-- **Frontend:** Jest and React Testing Library.
+- **Frontend:** Jest and React Testing Library, with real-browser checks of key flows against the live site.
+
+Current totals: **360 backend tests** and **285 frontend tests**, all passing.
 
 ## Deployment
 
