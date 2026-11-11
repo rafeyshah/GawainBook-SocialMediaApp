@@ -3,7 +3,8 @@ import os from "os";
 import path from "path";
 import request from "supertest";
 import type { Response } from "supertest";
-import { createApp, Limit } from "../src/app";
+import { createApp, Limit, LimitName } from "../src/app";
+import { OpenLibrary } from "../src/openLibrary";
 import { DiskStorage } from "../src/storage";
 import { LegalConfig } from "../src/legal";
 
@@ -13,11 +14,16 @@ export const UPLOAD_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "gawainbook-uplo
 export const legal: LegalConfig = { operator: null, privacyVersion: "test-v1", waitlistOpen: false };
 
 const unlimited: Limit = { windowMs: 60_000, max: 1_000_000 };
-export const makeApp = (limits: Partial<Record<"auth" | "upload" | "waitlist", Limit>> = {}) =>
+// Tests never reach the real Open Library; this fake returns nothing.
+export const offlineOpenLibrary = () =>
+  new OpenLibrary({ fetch: async () => ({ ok: true, status: 200, json: async () => ({ docs: [] }) }) });
+
+export const makeApp = (limits: Partial<Record<LimitName, Limit>> = {}, openLibrary: OpenLibrary = offlineOpenLibrary()) =>
   createApp({
     storage: new DiskStorage(UPLOAD_DIR),
     legal: () => legal,
-    limits: { auth: unlimited, upload: unlimited, waitlist: unlimited, ...limits },
+    limits: { auth: unlimited, upload: unlimited, waitlist: unlimited, posting: unlimited, ...limits },
+    openLibrary,
   });
 
 export const app = makeApp();
@@ -66,6 +72,10 @@ export class Client {
     return this.track(await this.agent.put(url).set("X-CSRF-Token", this.csrf).send(body ?? {}));
   }
 
+  async patch(url: string, body?: object) {
+    return this.track(await this.agent.patch(url).set("X-CSRF-Token", this.csrf).send(body ?? {}));
+  }
+
   async delete(url: string, body?: object) {
     return this.track(await this.agent.delete(url).set("X-CSRF-Token", this.csrf).send(body ?? {}));
   }
@@ -99,9 +109,9 @@ export interface TestUser {
 
 // Registers a user through the real API; the returned client is signed in.
 export async function signUp(overrides: Record<string, unknown> = {}): Promise<{ user: TestUser; client: Client }> {
-  counter += 1;
+  const n = ++counter; // captured before any await, so parallel sign-ups don't collide
   const client = await newClient();
-  const body = { username: `reader${counter}`, email: `reader${counter}@example.com`, password: "secret123", ...overrides };
+  const body = { username: `reader${n}`, email: `reader${n}@example.com`, password: "secret123", ...overrides };
   const res = await client.post("/api/auth/register", body);
   if (res.status !== 201) throw new Error(`signUp failed: ${res.status} ${JSON.stringify(res.body)}`);
   return { user: res.body, client };

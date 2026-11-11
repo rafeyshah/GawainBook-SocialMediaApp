@@ -66,19 +66,30 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 - Small groups reading the same book at their own pace
 - **Spoiler-safe chapter discussions:** a discussion stays locked, with its title and replies hidden, until *you* reach that chapter. The rule lives in one place (`src/policy.ts`) and is applied on every read path
 - "Who's where": see where each member is in the book
-- Public circles anyone can join, private circles with invite codes, organiser and moderator roles
-- Start discussions only about chapters you've reached; reply, and delete your own replies (moderators can delete any)
+- Public circles anyone can join; private circles joined with **invite links** that expire (1–30 days) and can be limited to a number of people
+- Organiser and moderator roles: promote members, remove members, turn off links
+- Start discussions only about chapters you've reached; reply, edit and delete your own writing
+- **Search** a circle's discussions; only chapters you've reached are searched, so results can't spoil anything
+- **Notifications** when someone replies to your discussion. They are checked against the spoiler rule when you open them, so a reply in a chapter you haven't reached never shows up
+
+**Safety**
+- Report a discussion or reply (spoiler, unkind, spam, other) to the circle's moderators, who see a review queue
+- Moderators hide content; members see a placeholder, moderators still see what was hidden
+- Block a reader: you stop seeing each other's discussions, replies, posts and notifications, and any follows end
+- Rate limits on posting, per reader
 
 **Books and library**
 - Shelves: *Want to read*, *Reading*, *Finished*, with chapter-by-chapter progress (private to you)
 - Book pages with chapters, your progress, and the circles reading them
-- Public-domain books to start: *Pride and Prejudice*, *The Wonderful Wizard of Oz*, *Persuasion*
+- Public-domain books to start: *Pride and Prejudice*, *The Wonderful Wizard of Oz*, *Persuasion* ([source record](docs/corpus/pride-and-prejudice/SOURCE.md))
+- Book search: our circle-ready books plus [Open Library](https://openlibrary.org) results, searched through the server and cached
 
 **Social**
 - Share posts with text and a photo, with no page reload, a 500-character limit and a live counter near the limit
 - Photos are stored in a private Neon bucket and served through short-lived signed links, so they survive redeploys
 - A home feed of your posts and posts from people you follow, newest first
 - Profile pages with bio, location, join date, and follower and following counts
+- A reading profile: favourite genres, reading language and pace (chapters a week), all optional
 - Profile photo and cover image: upload, change or remove them from your profile; the new photo shows everywhere straight away
 - Follow and unfollow other readers
 - Like and unlike posts; likes update instantly and roll back if the server rejects them
@@ -96,7 +107,8 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 - [x] Waitlist, privacy notice and Impressum (the waitlist opens once the legal details are set)
 - [x] Bookshelves: *Want to read*, *Reading*, *Finished*
 - [x] Reading circles with chapter progress and spoiler-safe discussions
-- [ ] Reporting, blocking and notifications (rest of Phase 1)
+- [x] Invite links, roles, search, reporting, blocking, moderation and notifications (Phase 1)
+- [x] End-to-end test of the whole circle journey in a real browser (Playwright)
 - [ ] A spoiler-aware reading assistant for public-domain books
 - [ ] Password reset by email
 
@@ -108,7 +120,7 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 | Backend | Node.js 22, Express 4, **TypeScript**, bcrypt, Helmet, Multer |
 | Database | **PostgreSQL on Neon**, **Drizzle ORM** + SQL migrations, node-postgres |
 | File storage | **Neon object storage** (S3-compatible, private bucket, presigned URLs) |
-| Testing | Jest, Supertest, React Testing Library, a real embedded PostgreSQL for backend tests |
+| Testing | Jest, Supertest, React Testing Library, Playwright, a real embedded PostgreSQL for backend and end-to-end tests |
 | Hosting | Render (single web service, auto-deploys on every push to `master`) |
 
 ## Project structure
@@ -127,7 +139,8 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 │   ├── public/images/        Bundled default images (avatars, placeholders)
 │   └── tests/                API, database, storage and migration tests
 ├── react-frontend/           React app (Create React App)
-├── docs/                     Banner, screenshots, decision log, launch plan
+├── e2e/                      Playwright end-to-end test of the circle journey
+├── docs/                     Banner, screenshots, decision log, launch plan, book sources
 ├── neon.ts                   Neon infrastructure as code (Postgres + "assets" bucket)
 ├── package.json              Root scripts: build, start, test
 └── render.yaml               Render deployment blueprint
@@ -213,7 +226,7 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 | `POST` | `/auth/logout` | End the session |
 | `GET` | `/auth/me` | The signed-in account (401 if signed out) |
 | `GET` | `/users?username=` or `/users?userId=` | Get a user |
-| `PUT` | `/users/:id` | Update your profile: `desc`, `city`, `from`, `relationship`, `profilePicture`, `coverPicture`, `password` |
+| `PUT` | `/users/:id` | Update your profile: `desc`, `city`, `from`, `relationship`, `profilePicture`, `coverPicture`, `favoriteGenres`, `readingLanguage`, `pace`, `password` |
 | `DELETE` | `/users/:id` | Delete your account (posts, likes and follows go with it) |
 | `GET` | `/users/friends/:userId` | List the people a user follows |
 | `PUT` | `/users/:id/follow` | Follow a user |
@@ -228,16 +241,30 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 | `GET` | `/legal` | Public: Impressum details and whether the waitlist is open |
 | `POST` | `/waitlist` | Public: `{ email, favouriteGenre, organizesBookClub, consent: true }` |
 | `GET` | `/books`, `/books/:idOrSlug` | Books, with your shelf and progress |
+| `GET` | `/books/search?q=` | `{ local, openLibrary, openLibraryError }`: our books plus Open Library results |
 | `PUT` | `/books/:id/progress` | `{ shelf?, chapter? }`: set your shelf and/or chapter |
 | `GET` | `/shelves[?username=]` | Shelves (others' shelves never include chapters) |
 | `GET` | `/circles` | `{ mine, discover }` |
 | `POST` | `/circles` | Start a circle: `{ name, bookId, visibility, schedule?, description? }` |
 | `GET` | `/circles/:id` | A circle (404 if private and you're not a member) |
-| `POST` | `/circles/:id/join`, `/circles/join`, `/circles/:id/leave` | Join a public circle, join with `{ code }`, leave |
+| `POST` | `/circles/:id/join`, `/circles/join`, `/circles/:id/leave` | Join a public circle, join with `{ code }` (invite link or permanent code), leave |
+| `GET` | `/invitations/:code` | What an invite link leads to (410 if expired, used up or turned off) |
+| `GET` / `POST` | `/circles/:id/invitations` | Moderators: active links / create `{ expiresInDays?, maxUses? }` |
+| `DELETE` | `/circles/:id/invitations/:invId` | Moderators: turn a link off |
+| `PUT` / `DELETE` | `/circles/:id/members/:userId` | Owner: set `{ role: "moderator" \| "member" }` / owner or moderator: remove a member |
+| `GET` | `/circles/:id/search?q=` | Search discussions up to your chapter |
+| `GET` | `/circles/:id/reports` | Moderators: open reports with the reported text |
 | `GET` / `POST` | `/circles/:id/threads` | Discussions (later chapters come back locked) / start one `{ chapter, title, body? }` |
 | `GET` | `/threads/:id` | A discussion and its replies (403 with no content if locked) |
+| `PATCH` / `DELETE` | `/threads/:id` | Edit your discussion `{ title?, body? }` / delete it (moderators: any) |
 | `POST` | `/threads/:id/comments` | Reply `{ body }` |
-| `DELETE` | `/comments/:id` | Delete your reply (moderators: any reply) |
+| `PATCH` / `DELETE` | `/comments/:id` | Edit your reply `{ body }` / delete it (moderators: any reply) |
+| `POST` | `/threads/:id/hide`, `/threads/:id/unhide`, `/comments/:id/hide`, `/comments/:id/unhide` | Moderators: hide or show content |
+| `POST` | `/reports` | Report `{ targetType: "thread" \| "comment", targetId, reason, details? }` |
+| `POST` | `/reports/:id/dismiss` | Moderators: dismiss a report |
+| `GET` / `PUT` / `DELETE` | `/blocks`, `/blocks/:userId` | Your blocked readers / block / unblock |
+| `GET` | `/notifications` | `{ unread, items }`, filtered by the spoiler rule when read |
+| `POST` | `/notifications/read` | Mark `{ ids }` (or everything) as read |
 | `POST` | `/upload` | Upload an image (multipart field `file`; PNG, JPG, GIF or WebP, max 5 MB) → `{ filename }` |
 
 Uploaded images are served at `/images/<filename>`, which redirects to a signed, time-limited link in the private bucket.
@@ -250,12 +277,14 @@ Both halves of the app have automated tests. They cover success paths, validatio
 npm test                  # everything
 npm run test:backend      # API + database tests
 npm run test:frontend     # React tests
+npm run test:e2e          # Playwright: the whole circle journey in a real browser
 ```
 
 - **Backend:** Jest and Supertest against a **real, throwaway PostgreSQL server** (embedded-postgres), with the real migrations applied, so constraints and cascades are tested exactly as they run in production. Object storage is tested with a fake S3 client. Nothing touches Neon.
 - **Frontend:** Jest and React Testing Library, with real-browser checks of key flows against the live site.
+- **End to end:** [Playwright](e2e/tests/circle-journey.spec.js) drives two readers through the core promise: sign up, join with an invite link, set chapter 4, see chapters 1–4, find chapter 9 locked (in the list, by direct link, through the API and in search), reply, and get notified. It runs against a throwaway server with its own temporary database (`npm run build` in both apps first). `npm run test:e2e:live` runs it against the live site and deletes its test accounts afterwards.
 
-Current totals: **395 backend tests** and **285 frontend tests**, all passing.
+Current totals: **538 backend tests**, **389 frontend tests** and the end-to-end journey, all passing.
 
 ## Deployment
 

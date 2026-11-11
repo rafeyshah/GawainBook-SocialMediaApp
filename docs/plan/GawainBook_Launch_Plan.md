@@ -36,7 +36,7 @@ What exists in this repo now, compared with the concept's MVP:
 |---|---|---|
 | Sign-up / sign-in UI | ✅ Complete | Combined page, light/dark themes, inline errors, tests |
 | **Real authentication** | ✅ Done (Week 1) | httpOnly session cookie + CSRF, `requireAuth`, `req.user` from the session; `tests/security.test.ts` proves nobody can act as another user |
-| Profiles | 🟡 Partial | Bio, city, follow counts. No genres, pace, language or favourite books |
+| Profiles | ✅ Built (11 Nov) | Bio, photo, cover, follow counts, plus reading profile: genres, language, pace |
 | Follow / unfollow | ✅ Complete | Validated, tested |
 | Posts, likes, feed | ✅ Complete | General feed. Note: the concept defers a "complex public feed" |
 | Image upload | ✅ Done (Week 1) | Neon object storage with signed links; survives redeploys. Profile photo and cover uploads added |
@@ -44,10 +44,10 @@ What exists in this repo now, compared with the concept's MVP:
 | Books, editions, chapters | 🟡 Built without editions (11 Nov) | Books + chapters (`seq`, prologue = 0). One edition per book for now |
 | Reading circles, membership, invitations | ✅ Built (11 Nov) | Public/private circles, roles, invite codes; circles are the home screen (D9) |
 | Chapter progress + spoiler-safe threads | ✅ Built (11 Nov) | One access rule in `src/policy.ts`; locked threads return no title or text |
-| Reporting, blocking, moderation | ❌ Missing | Required before inviting real readers |
-| Notifications / reminders | ❌ Missing | |
+| Reporting, blocking, moderation | ✅ Built (11 Nov) | Reports to circle moderators, hide/unhide, blocking both ways, posting rate limits |
+| Notifications / reminders | 🟡 Notifications built (11 Nov) | Reply notifications, filtered by the spoiler rule; reminders not yet |
 | AI reading assistant | ❌ Missing | |
-| Tests | ✅ Strong | 395 backend tests, 285 frontend tests; CI green on every push |
+| Tests | ✅ Strong | 538 backend, 389 frontend, 1 Playwright end-to-end journey; CI on every push |
 | Deploy | ✅ Works | Render single service + Neon Postgres (MongoDB retired); auto-deploys on every push to `master` |
 | TypeScript | ✅ Backend done (Week 1) | Backend in TypeScript with Drizzle; frontend stays JS (D3) |
 | Observability | 🟡 Minimal | `/api/health` with database, storage and API version |
@@ -92,7 +92,7 @@ Goal: make the existing app safe to build on, lock the decisions, and start talk
 ### Product track (~6 h)
 
 - [x] Write the **interview script** (§11.1) and a one-paragraph recruiting post. ✅ [script](../discovery/interview-script.md) · [posts](../discovery/recruiting-post.md)
-- [ ] Book **at least 3 interviews** with fantasy, romantasy or romance readers and **at least 1 with a book-club organizer** for next week.
+- [ ] Book **at least 3 interviews** with fantasy, romantasy or romance readers and **at least 1 with a book-club organizer** for next week. Outreach kit ready ([outreach-kit.md](../discovery/outreach-kit.md): channels with rules checked, screener, tracker); tick once booked.
 - [ ] 🟡 Built, not yet open: put up a **waitlist page** (a simple form; collect email, favourite genre, and "Do you organize a book club?"). Add the privacy notice and German legal notice (Impressum) before collecting any email (§12).
 - [x] Download the chosen book's source text; record its source URL, licence text and date in `docs/corpus/pride-and-prejudice/SOURCE.md`. ✅ [SOURCE.md](../corpus/pride-and-prejudice/SOURCE.md) (Gutenberg #1342, SHA-256 checked by `tests/corpus.test.ts`; 61 chapters split by `src/corpus/gutenberg.ts`)
 
@@ -142,26 +142,26 @@ Put **one** function, `canReadThread(user, thread)`, in a single policy module. 
 
 ### 4.3 Week-by-week
 
-**Week 2 (17 – 23 Nov): books, shelves, progress**
-- Book search: Open Library API proxied through the backend, cached, with only a few verified editions marked "chapters available".
-- Seed `Pride and Prejudice` edition + 61 chapters (from your verified source).
-- Shelves UI on the profile; "Currently reading" with a chapter picker.
-- Profile additions: favourite genres, reading language, pace (chapters per week). Every field optional; nothing blocks sign-up.
-- Tests: progress can only move for your own account; chapter numbers outside the edition's range are rejected.
+**Week 2 (17 – 23 Nov): books, shelves, progress** ✅ (built 11 Nov)
+- [x] Book search: Open Library API proxied through the backend, cached, with only a few verified editions marked "chapters available". ✅ `GET /api/books/search`; 6 h cache (LRU, 500 queries), 5 s timeout, still answers if Open Library is down; Library page search (`BookSearch.jsx`)
+- [x] Seed `Pride and Prejudice` edition + 61 chapters (from your verified source). ✅ 61 chapters, matched against [SOURCE.md](../corpus/pride-and-prejudice/SOURCE.md) by `tests/corpus.test.ts`
+- [x] Shelves UI on the profile; "Currently reading" with a chapter picker. ✅
+- [x] Profile additions: favourite genres, reading language, pace (chapters per week). Every field optional; nothing blocks sign-up. ✅ "Reading profile" card with genre chips (max 8), 12 languages, pace 1–100
+- [x] Tests: progress can only move for your own account; chapter numbers outside the edition's range are rejected. ✅
 
-**Week 3 (24 – 30 Nov): circles + invitations**
-- Create a circle (name, edition, public or private, weekly schedule).
-- Invite links (expiring, use-limited codes); join and leave; owner and moderator roles.
-- Circle page: members, current week's chapters, threads list.
-- **Circles become the signed-in home screen;** the posts feed moves to a tab.
-- Tests: private circles are invisible to non-members in lists, search and direct URLs; expired or used-up codes fail; only owners and moderators can manage members.
+**Week 3 (24 – 30 Nov): circles + invitations** ✅ (built 11 Nov)
+- [x] Create a circle (name, edition, public or private, weekly schedule). ✅
+- [x] Invite links (expiring, use-limited codes); join and leave; owner and moderator roles. ✅ `/join/<code>` links: 1–30 days, 1–100 uses or unlimited, revocable; the last use can't be taken twice (atomic); sign-in returns you to the link
+- [x] Circle page: members, current week's chapters, threads list. ✅ plus an "Organise" panel (reports, invite links, members) and in-circle search
+- [x] **Circles become the signed-in home screen;** the posts feed moves to a tab. ✅
+- [x] Tests: private circles are invisible to non-members in lists, search and direct URLs; expired or used-up codes fail; only owners and moderators can manage members. ✅ `tests/invitations.test.ts`
 
-**Week 4 (1 – 7 Dec): chapter discussions + safety**
-- Threads scoped to a chapter; comments; edit and delete your own.
-- Locked-thread placeholder: "Chapter 9 discussion. Reach chapter 9 to read." The server returns no title or body text for it.
-- Report a comment; block a reader; moderators hide content; rate limits on posting.
-- Basic in-app notifications (a reply to your thread), filtered by the same access rule.
-- **Playwright** end-to-end test: sign up → join via invite → set chapter 4 → see the chapter 1–4 threads → chapter 9 thread locked → reply → second user sees the reply.
+**Week 4 (1 – 7 Dec): chapter discussions + safety** ✅ (built 11 Nov)
+- [x] Threads scoped to a chapter; comments; edit and delete your own. ✅ edits are marked "edited"
+- [x] Locked-thread placeholder: "Chapter 9 discussion. Reach chapter 9 to read." The server returns no title or body text for it. ✅
+- [x] Report a comment; block a reader; moderators hide content; rate limits on posting. ✅ reports go to the circle's moderators; blocking hides both ways and ends follows; hidden replies become placeholders; 30 posts / 10 min per reader
+- [x] Basic in-app notifications (a reply to your thread), filtered by the same access rule. ✅ bell in the top bar; nothing is stored in the notification itself, so a chapter you haven't reached never leaks a preview
+- [x] **Playwright** end-to-end test: sign up → join via invite → set chapter 4 → see the chapter 1–4 threads → chapter 9 thread locked → reply → second user sees the reply. ✅ [`e2e/tests/circle-journey.spec.js`](../../e2e/tests/circle-journey.spec.js), runs in CI against a throwaway server
 
 ### 4.4 The test matrix that proves the core promise
 
@@ -170,19 +170,19 @@ Put **one** function, `canReadThread(user, thread)`, in a single policy module. 
 | 1 | Non-member requests a private circle's threads (list, single, comments) | 404 on all three (don't reveal the circle exists) ✅ tested |
 | 2 | Member at chapter 4 requests a chapter 9 thread by id | 403 with no title or body ✅ tested |
 | 3 | Thread list for a chapter-4 reader | Contains only `chapter_seq <= 4` ✅ tested (later ones as locked placeholders) |
-| 4 | Search for a word that appears only in a chapter 9 comment | No result for the chapter-4 reader |
-| 5 | Notification about a chapter 9 reply | Not delivered (or delivered with no preview) to the chapter-4 reader |
-| 6 | Blocked user's comments | Hidden from the blocker everywhere |
+| 4 | Search for a word that appears only in a chapter 9 comment | No result for the chapter-4 reader ✅ tested (`safety.test.ts`, and in the browser in the e2e test) |
+| 5 | Notification about a chapter 9 reply | Not delivered (or delivered with no preview) to the chapter-4 reader ✅ tested (not delivered; also after leaving or being removed) |
+| 6 | Blocked user's comments | Hidden from the blocker everywhere ✅ tested (list, thread, replies, search, notifications, profile posts; both directions) |
 | 7 | Member removed from a circle | Loses access immediately ✅ tested |
-| 8 | Progress moves backwards | Previously visible later threads become locked again ✅ tested |
+| 8 | Progress moves backwards | Previously visible later threads become locked again ✅ tested (API and e2e) |
 | 9 | Prologue / epilogue chapters | Correct order using `seq` ✅ tested |
 | 10 | Moderator vs member actions | Role checks enforced on the server ✅ tested |
 
 ### Phase 1 exit gate (target 7 Dec)
 
-- [ ] The full journey works on the live site with two test accounts at different chapters
-- [ ] The test matrix in §4.4 passes in CI
-- [ ] Reporting and blocking work
+- [ ] The full journey works on the live site with two test accounts at different chapters. Passes locally end to end; run `npm run test:e2e:live` after this is deployed
+- [ ] The test matrix in §4.4 passes in CI. All 10 rows are tested locally (538 backend, 389 frontend, 1 end-to-end); tick when the first CI run with the new `e2e` job is green
+- [x] Reporting and blocking work ✅ (API, UI and tests; checked in a real browser 11 Nov)
 - [ ] 8+ interviews done; notes summarised (§11)
 
 ---

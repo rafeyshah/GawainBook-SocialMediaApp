@@ -16,6 +16,9 @@ export interface PublicProfile {
   city: string | null;
   from: string | null;
   relationship: number | null;
+  favoriteGenres: string[];
+  readingLanguage: string | null;
+  pace: number | null;
   createdAt: Date;
 }
 
@@ -41,6 +44,9 @@ export async function publicProfile(db: Db, user: User): Promise<PublicProfile> 
     city: user.city,
     from: user.hometown,
     relationship: user.relationship,
+    favoriteGenres: user.favoriteGenres,
+    readingLanguage: user.readingLanguage,
+    pace: user.pace,
     createdAt: user.createdAt,
   };
 }

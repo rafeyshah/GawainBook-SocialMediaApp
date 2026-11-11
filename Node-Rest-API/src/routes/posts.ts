@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { follows, postLikes, posts, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
 import { postDtos } from "../serializers";
+import { blockedIds } from "../policy";
 import { requireAuth } from "../auth";
 
 const router = Router();
@@ -120,6 +121,11 @@ router.get(
     const db = getDb();
     const [user] = await db.select({ id: users.id }).from(users).where(eq(users.username, req.params.username));
     if (!user) throw new HttpError(404, "User not found.");
+    // Blocked either way: no posts.
+    if ((await blockedIds(req.user!.id)).has(user.id)) {
+      res.json([]);
+      return;
+    }
     const rows = await db
       .select()
       .from(posts)

@@ -1,0 +1,296 @@
+/* Phase 1: editing, moderation, reports, invites, search, notifications. */
+
+.itemActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 6px;
+}
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.linkBtn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.linkBtn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.linkBtn.danger:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.editedMark {
+  font-size: 12px;
+  color: var(--muted);
+}
+.hiddenNote {
+  font-style: italic;
+  color: var(--muted);
+  margin: 0;
+}
+.reply.isHidden .replyText {
+  opacity: 0.65;
+}
+.modFlag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+}
+
+.noticeBox {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.reportForm {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  display: grid;
+  gap: 10px;
+}
+.reportForm fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.reportForm legend {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Circle search */
+.searchBar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.searchBar .input {
+  flex: 1;
+  min-width: 0;
+}
+.searchResults {
+  display: grid;
+}
+.searchHit {
+  display: grid;
+  gap: 2px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+}
+.searchHit:last-child {
+  border-bottom: 0;
+}
+.searchHit:hover {
+  background: var(--surface-2);
+}
+.searchHit mark {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.searchSnippet {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Moderator tools */
+.manageList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+/* Avatar | name, with the actions on their own line under the name, so
+   long usernames never collide with buttons in the narrow side column. */
+.manageItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+}
+.manageItem.noAvatar {
+  grid-template-columns: minmax(0, 1fr);
+}
+.manageItem > .grow {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.manageItem .memberMeta {
+  display: block;
+}
+.manageActions {
+  grid-column: -2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: -8px;
+}
+.organiseBlock + .organiseBlock {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.inviteForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+}
+.inviteForm .formActions {
+  grid-column: 1 / -1;
+}
+.inviteLink {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  word-break: break-all;
+}
+.reportItem {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 6px;
+}
+.reportQuote {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface-2);
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.subhead {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 14px 0 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.subhead:first-child {
+  margin-top: 0;
+}
+
+/* Reading profile */
+.genreChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.genreChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: var(--accent-soft);
+  color: var(--text);
+  border: 1px solid transparent;
+}
+button.genreChip {
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  border-color: var(--border);
+  background: var(--surface);
+}
+button.genreChip[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.factList {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 14px;
+}
+.factList dt {
+  color: var(--muted);
+}
+.factList dd {
+  margin: 0;
+}
+
+/* Book search (Library) */
+.olGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+.olBook {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.olBook img,
+.olCoverFallback {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.olCoverFallback {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.olTitle {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.olMeta {
+  color: var(--muted);
+}
+
+/* Join page */
+.joinCard {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 32px 20px;
+}

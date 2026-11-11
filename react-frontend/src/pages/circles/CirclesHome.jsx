@@ -16,6 +16,13 @@ export const greeting = (date = new Date()) => {
 
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+// Accepts a bare code or a whole invite link (…/join/<code>).
+export function codeFrom(input) {
+  const v = String(input || "").trim();
+  const m = v.match(/\/join\/([\w-]+)\/?$/);
+  return m ? m[1] : v;
+}
+
 export function CircleCard({ circle, action }) {
   return (
     <article className="card rowCard" aria-label={circle.name}>
@@ -143,7 +150,7 @@ function JoinByCode({ onJoined }) {
     e.preventDefault();
     setError("");
     try {
-      const res = await axios.post("/circles/join", { code: code.trim() });
+      const res = await axios.post("/circles/join", { code: codeFrom(code) });
       onJoined(res.data.circleId);
     } catch (err) {
       setError(errorMessage(err));
@@ -154,7 +161,7 @@ function JoinByCode({ onJoined }) {
       <label className="srOnly" htmlFor="inviteCode">
         Invite code
       </label>
-      <input id="inviteCode" className="input" placeholder="Have an invite code?" value={code} onChange={(e) => setCode(e.target.value)} />
+      <input id="inviteCode" className="input" placeholder="Paste an invite link or code" value={code} onChange={(e) => setCode(e.target.value)} />
       <button type="submit" className="btn btnSecondary" disabled={!code.trim()}>
         Join
       </button>

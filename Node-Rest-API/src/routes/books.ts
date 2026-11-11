@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { books, chapters, circleMembers, circles, userBooks, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
 import { requireAuth } from "../auth";
+import { OpenLibrary } from "../openLibrary";
 
 const router = Router();
 // Only this router's own paths: it's mounted at /api next to public routes.
@@ -179,5 +180,40 @@ router.get(
     res.json(result);
   })
 );
+
+// Book search: our own books (chapters available, so circles can read them)
+// plus Open Library results for discovery. Open Library being slow or down
+// only drops the second list.
+export function bookSearchRouter(openLibrary: OpenLibrary) {
+  const search = Router();
+  search.get(
+    "/books/search",
+    requireAuth,
+    handle(async (req, res) => {
+      const q = String(req.query.q ?? "").trim();
+      if (q.length < 2 || q.length > 100) throw new HttpError(400, "Search for 2–100 characters.");
+      const pattern = `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
+      const rows = await getDb()
+        .select(bookSummary)
+        .from(books)
+        .where(or(sql`${books.title} ilike ${pattern}`, sql`${books.author} ilike ${pattern}`))
+        .orderBy(asc(books.title))
+        .limit(10);
+      const counts = await chapterCounts(rows.map((b) => b._id));
+      const local = rows.map((b) => ({ ...b, chapterCount: counts.get(b._id) ?? 0, chaptersAvailable: (counts.get(b._id) ?? 0) > 0 }));
+      let openLibraryResults: Awaited<ReturnType<OpenLibrary["search"]>> = [];
+      let openLibraryError = false;
+      try {
+        // Leave out works we already have, matched by title and author.
+        const ours = new Set(local.map((b) => `${b.title}|${b.author}`.toLowerCase()));
+        openLibraryResults = (await openLibrary.search(q)).filter((b) => !ours.has(`${b.title}|${b.author}`.toLowerCase()));
+      } catch {
+        openLibraryError = true;
+      }
+      res.json({ query: q, local, openLibrary: openLibraryResults, openLibraryError });
+    })
+  );
+  return search;
+}
 
 export default router;

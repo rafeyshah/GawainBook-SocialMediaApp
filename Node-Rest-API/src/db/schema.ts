@@ -3,11 +3,13 @@ import {
   boolean,
   check,
   index,
+  integer,
   pgTable,
   primaryKey,
   smallint,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // Ids are text so rows migrated from MongoDB keep their ObjectId strings
@@ -30,6 +32,10 @@ export const users = pgTable(
     city: text("city"),
     hometown: text("hometown"),
     relationship: smallint("relationship"),
+    // Reading profile (plan §4.3, week 2). All optional.
+    favoriteGenres: text("favorite_genres").array().notNull().default(sql`'{}'::text[]`),
+    readingLanguage: text("reading_language"),
+    pace: smallint("pace"), // chapters per week
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -37,6 +43,8 @@ export const users = pgTable(
     check("users_username_length", sql`char_length(${t.username}) between 3 and 20`),
     check("users_email_lowercase", sql`${t.email} = lower(${t.email})`),
     check("users_relationship_range", sql`${t.relationship} is null or ${t.relationship} between 1 and 3`),
+    check("users_pace_range", sql`${t.pace} is null or ${t.pace} between 1 and 100`),
+    check("users_genres_count", sql`coalesce(array_length(${t.favoriteGenres}, 1), 0) <= 8`),
   ]
 );
 
@@ -236,6 +244,10 @@ export const threads = pgTable(
     title: text("title").notNull(),
     body: text("body").notNull().default(""),
     createdAt: createdAt(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    // Hidden by a moderator: kept for the record, shown as a placeholder.
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    hiddenBy: text("hidden_by").references(() => users.id, { onDelete: "set null" }),
   },
   (t) => [
     check("threads_title_length", sql`char_length(${t.title}) between 3 and 120`),
@@ -256,10 +268,114 @@ export const comments = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
     createdAt: createdAt(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    hiddenBy: text("hidden_by").references(() => users.id, { onDelete: "set null" }),
   },
   (t) => [
     check("comments_body_length", sql`char_length(${t.body}) between 1 and 2000`),
     index("comments_thread_idx").on(t.threadId, t.createdAt),
+  ]
+);
+
+// Invite links: expiring, use-limited codes for a circle (plan §4.3, week 3).
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: id(),
+    circleId: text("circle_id")
+      .notNull()
+      .references(() => circles.id, { onDelete: "cascade" }),
+    code: text("code").notNull().unique("invitations_code_unique"),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    maxUses: integer("max_uses"), // null = unlimited until it expires
+    uses: integer("uses").notNull().default(0),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("invitations_max_uses", sql`${t.maxUses} is null or ${t.maxUses} between 1 and 100`),
+    check("invitations_uses", sql`${t.uses} >= 0 and (${t.maxUses} is null or ${t.uses} <= ${t.maxUses})`),
+    index("invitations_circle_idx").on(t.circleId),
+  ]
+);
+
+// blocker no longer sees anything the blocked reader writes, and the
+// blocked reader can't read the blocker's discussions.
+export const blocks = pgTable(
+  "blocks",
+  {
+    blockerId: text("blocker_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockedId: text("blocked_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "blocks_pk", columns: [t.blockerId, t.blockedId] }),
+    check("blocks_not_self", sql`${t.blockerId} <> ${t.blockedId}`),
+    index("blocks_blocked_idx").on(t.blockedId),
+  ]
+);
+
+export const reports = pgTable(
+  "reports",
+  {
+    id: id(),
+    reporterId: text("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    circleId: text("circle_id")
+      .notNull()
+      .references(() => circles.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    reason: text("reason").notNull(),
+    details: text("details").notNull().default(""),
+    status: text("status").notNull().default("open"),
+    resolvedBy: text("resolved_by").references(() => users.id, { onDelete: "set null" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("reports_target_type", sql`${t.targetType} in ('thread', 'comment')`),
+    check("reports_reason", sql`${t.reason} in ('spoiler', 'harassment', 'spam', 'other')`),
+    check("reports_status", sql`${t.status} in ('open', 'hidden', 'dismissed')`),
+    check("reports_details_length", sql`char_length(${t.details}) <= 500`),
+    // One open report per reader per item.
+    uniqueIndex("reports_one_open_idx").on(t.reporterId, t.targetType, t.targetId).where(sql`${t.status} = 'open'`),
+    index("reports_circle_status_idx").on(t.circleId, t.status),
+  ]
+);
+
+// In-app notifications. Content is never stored here: it's loaded and
+// filtered through the access rule when the reader opens the list.
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    commentId: text("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("notifications_type", sql`${t.type} in ('reply')`),
+    index("notifications_user_idx").on(t.userId, t.createdAt),
   ]
 );
 

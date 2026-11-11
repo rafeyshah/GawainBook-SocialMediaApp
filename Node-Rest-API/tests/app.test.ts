@@ -23,15 +23,15 @@ describe("GET /api/health", () => {
 describe("Content-Security-Policy", () => {
   const imgSrc = (csp: string) => csp.split(";").find((d) => d.trim().startsWith("img-src"))?.trim();
 
-  test("with disk storage, images are only allowed from this app", async () => {
+  test("with disk storage, images are only allowed from this app and Open Library covers (and the Internet Archive they redirect to)", async () => {
     const res = await request(app).get("/api/health");
-    expect(imgSrc(res.headers["content-security-policy"])).toBe("img-src 'self' data:");
+    expect(imgSrc(res.headers["content-security-policy"])).toBe("img-src 'self' data: https://covers.openlibrary.org https://archive.org https://*.archive.org");
   });
 
   test("with Neon storage, the bucket's origin is allowed for images and nothing else", async () => {
     const neonApp = createApp({ storage: new S3Storage({ send: jest.fn() } as never, "assets", undefined, "https://br-x.storage.neon.tech") });
     const csp = (await request(neonApp).get("/api/health")).headers["content-security-policy"];
-    expect(imgSrc(csp)).toBe("img-src 'self' data: https://br-x.storage.neon.tech");
+    expect(imgSrc(csp)).toBe("img-src 'self' data: https://covers.openlibrary.org https://archive.org https://*.archive.org https://br-x.storage.neon.tech");
     expect(csp).toMatch(/script-src 'self'/);
     expect(csp.match(/br-x\.storage\.neon\.tech/g)).toHaveLength(1);
   });

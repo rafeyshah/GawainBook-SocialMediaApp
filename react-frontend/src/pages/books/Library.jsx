@@ -5,6 +5,7 @@ import Layout from "../../components/layout/Layout";
 import BookCover, { ProgressBar } from "../../components/book/BookCover";
 import { errorMessage } from "../../apiCalls";
 import { SHELF_LABELS } from "./BookPage";
+import BookSearch from "./BookSearch";
 import "../reading/reading.css";
 
 const TABS = [["reading", "Reading"], ["want", "Want to read"], ["finished", "Finished"]];
@@ -129,6 +130,8 @@ export default function Library() {
           </div>
         </section>
       )}
+
+      <BookSearch />
     </Layout>
   );
 }

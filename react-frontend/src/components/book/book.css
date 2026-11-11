@@ -112,6 +112,12 @@
 
 /* Small covers: never split a word mid-way (hyphenation isn't reliable in
    every browser); tiny covers are decorative, the title sits next to them. */
+/* Medium covers: one-word titles like "Persuasion" fit without a mid-word break. */
+.bookCover.md .bookCoverTitle {
+  font-size: 11.5px;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
 .bookCover.sm .bookCoverTitle {
   overflow-wrap: normal;
   word-break: keep-all;

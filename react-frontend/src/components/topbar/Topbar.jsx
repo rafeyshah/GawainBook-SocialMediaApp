@@ -5,6 +5,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { logoutCall } from "../../apiCalls";
 import Avatar from "../avatar/Avatar";
 import ThemeSwitcher from "../themeSwitcher/ThemeSwitcher";
+import NotificationBell from "../notifications/NotificationBell";
 import "./topbar.css";
 
 export default function Topbar() {
@@ -23,6 +24,7 @@ export default function Topbar() {
 
         <div className="topbarActions">
           <ThemeSwitcher />
+          <NotificationBell />
           <Link
             to={`/profile/${user.username}`}
             className="topbarProfile"

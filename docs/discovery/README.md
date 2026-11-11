@@ -6,6 +6,7 @@ Interviews with readers and book-club organisers (launch plan §11).
 |---|---|
 | [interview-script.md](interview-script.md) | The 30-minute script, with consent wording |
 | [recruiting-post.md](recruiting-post.md) | Posts and messages for booking interviews (English and German) |
+| [outreach-kit.md](outreach-kit.md) | Where to post (rules checked), screener, booking tracker, daily plan |
 | [notes-template.md](notes-template.md) | Copy per interview as `YYYY-MM-DD-<initials>.md` |
 | [patterns.md](patterns.md) | Running summary of what readers say |
 

@@ -18,7 +18,10 @@ import userRoute from "./routes/users";
 import postRoute from "./routes/posts";
 import { legalRouter, waitlistRouter } from "./routes/waitlist";
 import bookRoute from "./routes/books";
-import circleRoute from "./routes/circles";
+import { circleRouter } from "./routes/circles";
+import { safetyRouter } from "./routes/safety";
+import { bookSearchRouter } from "./routes/books";
+import { OpenLibrary, COVER_IMAGE_ORIGINS } from "./openLibrary";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_TYPES: Record<string, string> = {
@@ -42,20 +45,27 @@ export interface Limit {
 export interface AppOptions {
   storage?: Storage;
   legal?: () => LegalConfig;
-  limits?: Partial<Record<"auth" | "upload" | "waitlist", Limit>>;
+  limits?: Partial<Record<LimitName, Limit>>;
+  openLibrary?: OpenLibrary;
 }
 
+export type LimitName = "auth" | "upload" | "waitlist" | "posting";
+
 // Defaults: generous for real readers, tight enough to stop brute force.
-export const DEFAULT_LIMITS: Record<"auth" | "upload" | "waitlist", Limit> = {
+export const DEFAULT_LIMITS: Record<LimitName, Limit> = {
   auth: { windowMs: 15 * 60 * 1000, max: 10 },
+  // Discussions, replies, edits and reports, per reader.
+  posting: { windowMs: 10 * 60 * 1000, max: 30 },
   upload: { windowMs: 60 * 60 * 1000, max: 30 },
   waitlist: { windowMs: 60 * 60 * 1000, max: 5 },
 };
 
-const limiter = ({ windowMs, max }: Limit, message: string): RequestHandler =>
+const limiter = ({ windowMs, max }: Limit, message: string, perUser = false): RequestHandler =>
   rateLimit({
     windowMs,
     limit: max,
+    // Signed-in limits count per reader, so a shared network isn't punished.
+    ...(perUser ? { keyGenerator: (req) => `user:${req.user?.id ?? req.ip}` } : {}),
     standardHeaders: "draft-7",
     legacyHeaders: false,
     handler: (req, res) => {
@@ -71,7 +81,9 @@ export function createApp(options: AppOptions = {}) {
     auth: limiter(limits.auth, "Too many attempts. Please wait a few minutes and try again."),
     upload: limiter(limits.upload, "You've uploaded a lot of photos. Please try again later."),
     waitlist: limiter(limits.waitlist, "Too many sign-ups from this network. Please try again later."),
+    posting: limiter(limits.posting, "You're posting very quickly. Please wait a few minutes and try again.", true),
   };
+  const openLibrary = options.openLibrary ?? new OpenLibrary();
 
   const app = express();
   // Render terminates HTTPS in front of the app: trust one proxy hop so
@@ -85,7 +97,7 @@ export function createApp(options: AppOptions = {}) {
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          "img-src": ["'self'", "data:", ...(storage.imageOrigin ? [storage.imageOrigin] : [])],
+          "img-src": ["'self'", "data:", ...COVER_IMAGE_ORIGINS, ...(storage.imageOrigin ? [storage.imageOrigin] : [])],
         },
       },
     })
@@ -152,8 +164,10 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api/auth", authRouter(limit));
   app.use("/api/users", userRoute);
   app.use("/api/posts", postRoute);
+  app.use("/api", bookSearchRouter(openLibrary));
   app.use("/api", bookRoute);
-  app.use("/api", circleRoute);
+  app.use("/api", circleRouter(limit.posting));
+  app.use("/api", safetyRouter());
   app.use("/api/legal", legalRouter(getLegal));
   app.use("/api/waitlist", waitlistRouter(getLegal, limit.waitlist));
 

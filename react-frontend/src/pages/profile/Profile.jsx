@@ -9,6 +9,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { errorMessage } from "../../apiCalls";
 import BookCover from "../../components/book/BookCover";
 import PhotoEditor from "../../components/photoEditor/PhotoEditor";
+import ReadingProfile, { BlockButton, BlockedReaders } from "../../components/readingProfile/ReadingProfile";
 import "../reading/reading.css";
 import "./profile.css";
 
@@ -114,14 +115,16 @@ export function ProfileShelves({ username, isMe }) {
 
 export default function Profile() {
   const { username } = useParams();
-  const { user: me } = useContext(AuthContext);
+  const { user: me, dispatch } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ready | notfound | error
   const [message, setMessage] = useState("");
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
+    setBlocked(false);
     axios
       .get(`/users?username=${encodeURIComponent(username)}`)
       .then((res) => {
@@ -211,6 +214,8 @@ export default function Profile() {
                     onChange={(v) => setProfile((p) => ({ ...p, profilePicture: v }))}
                   />
                 ) : null
+              ) : blocked ? (
+                <span className="memberMeta">Blocked</span>
               ) : (
                 <FollowButton profile={profile} onChange={adjustFollowers} />
               )}
@@ -236,9 +241,29 @@ export default function Profile() {
                 <strong>{profile.followings.length}</strong> following
               </span>
             </div>
+            {!isMe && !blocked && (
+              <div className="itemActions">
+                <BlockButton
+                  profile={profile}
+                  onBlocked={() => {
+                    setBlocked(true);
+                    dispatch({ type: "UNFOLLOW", payload: profile._id });
+                    setProfile((p) => ({ ...p, followers: p.followers.filter((id) => id !== me._id), followings: p.followings.filter((id) => id !== me._id) }));
+                  }}
+                />
+              </div>
+            )}
           </div>
         </section>
-        <Feed username={profile.username} />
+        <ReadingProfile profile={profile} isMe={isMe} onChange={(saved) => setProfile((p) => ({ ...p, ...saved }))} />
+        {blocked ? (
+          <div className="card emptyCard">
+            <strong>You've blocked {profile.username}</strong>
+            You won't see each other's writing. You can unblock them from your own profile.
+          </div>
+        ) : (
+          <Feed username={profile.username} />
+        )}
       </>
     );
   }
@@ -246,7 +271,14 @@ export default function Profile() {
   return (
     <Layout
       width="reading"
-      aside={status === "ready" ? <ProfileShelves username={profile.username} isMe={isMe} /> : null}
+      aside={
+        status === "ready" ? (
+          <>
+            <ProfileShelves username={profile.username} isMe={isMe} />
+            {isMe && <BlockedReaders />}
+          </>
+        ) : null
+      }
     >
       {content}
     </Layout>

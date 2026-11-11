@@ -92,3 +92,14 @@
     padding: 0 8px;
   }
 }
+
+/* Phones: the logo mark alone, so the theme switch, notifications, avatar
+   and log-out fit without touching. */
+@media (max-width: 480px) {
+  .topbarWordmark {
+    display: none;
+  }
+  .topbarActions {
+    gap: 6px;
+  }
+}

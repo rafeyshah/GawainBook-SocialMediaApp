@@ -6,6 +6,13 @@ import { renderWithAuth, ME } from "../../testUtils";
 
 jest.mock("axios");
 
+// The bell is a stand-in here (see setupTests.js); it has its own tests.
+
+test("has the notification bell", () => {
+  renderWithAuth(<Topbar />);
+  expect(screen.getByRole("button", { name: "Notifications" })).toBeInTheDocument();
+});
+
 test("shows the brand linking home, and your profile", () => {
   renderWithAuth(<Topbar />);
   expect(screen.getByRole("link", { name: "GawainBook home" })).toHaveAttribute("href", "/");

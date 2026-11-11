@@ -10,6 +10,8 @@ import ProgressEditor from "../../components/book/ProgressEditor";
 import { AuthContext } from "../../context/AuthContext";
 import { errorMessage } from "../../apiCalls";
 import { plural } from "./CirclesHome";
+import CircleManage from "./CircleManage";
+import CircleSearch from "./CircleSearch";
 import "../reading/reading.css";
 
 // Members placed along the book by chapter: "who's where".
@@ -156,6 +158,7 @@ export default function CirclePage() {
   const [message, setMessage] = useState("");
   const [composing, setComposing] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [searching, setSearching] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -238,7 +241,7 @@ export default function CirclePage() {
                 </div>
                 {circle.inviteCode && (
                   <div className="inviteBox">
-                    Invite code: <code>{circle.inviteCode}</code>
+                    Permanent invite code: <code>{circle.inviteCode}</code>
                   </div>
                 )}
               </>
@@ -279,7 +282,8 @@ export default function CirclePage() {
               }}
             />
           )}
-          <ThreadList threads={threads} />
+          {circle.myRole && <CircleSearch circleId={circle._id} onResults={setSearching} />}
+          {!searching && <ThreadList threads={threads} />}
           <p className="sourceNote">
             Discussions about chapters you haven't reached stay locked, including their titles, so nothing is spoiled.
             Current position: {chapterName(circle.myProgress)}.
@@ -289,6 +293,7 @@ export default function CirclePage() {
     );
     // "Who's where" sits beside the discussions on wide screens.
     aside = (
+      <>
         <section className="section" aria-labelledby="whereTitle">
           <h2 className="sectionTitle" id="whereTitle">
             Who's where
@@ -317,6 +322,8 @@ export default function CirclePage() {
             </ul>
           </div>
         </section>
+        {(circle.myRole === "owner" || circle.myRole === "moderator") && <CircleManage circle={circle} meId={user._id} onChanged={load} />}
+      </>
     );
   }
 

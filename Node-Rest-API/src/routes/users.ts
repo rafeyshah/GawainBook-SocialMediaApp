@@ -30,7 +30,32 @@ const EDITABLE = {
   relationship: "relationship",
   profilePicture: "profilePicture",
   coverPicture: "coverPicture",
+  favoriteGenres: "favoriteGenres",
+  readingLanguage: "readingLanguage",
+  pace: "pace",
 } as const;
+
+export const MAX_GENRES = 8;
+// Reading languages offered in the app (ISO 639-1).
+export const LANGUAGES = ["en", "de", "fr", "es", "it", "nl", "pt", "pl", "tr", "ur", "hi", "ar"] as const;
+
+// Genres: free text, tidied, de-duplicated (case-insensitive), at most 8.
+export function cleanGenres(value: unknown): string[] {
+  if (!Array.isArray(value)) throw new HttpError(400, "Genres must be a list.");
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const g of value) {
+    if (typeof g !== "string") throw new HttpError(400, "Each genre must be text.");
+    const name = g.trim().replace(/\s+/g, " ");
+    if (!name) continue;
+    if (name.length > 30) throw new HttpError(400, "Genres can be at most 30 characters.");
+    if (seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push(name);
+  }
+  if (out.length > MAX_GENRES) throw new HttpError(400, `Choose up to ${MAX_GENRES} genres.`);
+  return out;
+}
 
 // Only the signed-in user's own account can be changed or deleted.
 const ownAccountOnly = (id: string, me: string, action: string) => {
@@ -58,6 +83,17 @@ router.put(
       const r = Number(update.relationship);
       if (![1, 2, 3].includes(r)) throw new HttpError(400, "Relationship must be 1, 2 or 3.");
       update.relationship = r;
+    }
+    if (update.favoriteGenres !== undefined) update.favoriteGenres = update.favoriteGenres === null ? [] : cleanGenres(update.favoriteGenres);
+    if (update.readingLanguage !== undefined) {
+      const l = update.readingLanguage;
+      if (l === null || l === "") update.readingLanguage = null;
+      else if (!LANGUAGES.includes(l as (typeof LANGUAGES)[number])) throw new HttpError(400, "Choose a reading language from the list.");
+    }
+    if (update.pace !== undefined) {
+      const p = update.pace;
+      if (p === null || p === "") update.pace = null;
+      else if (!Number.isInteger(p) || (p as number) < 1 || (p as number) > 100) throw new HttpError(400, "Pace must be 1–100 chapters a week.");
     }
     for (const text of ["bio", "city", "hometown"]) {
       if (typeof update[text] === "string" && (update[text] as string).length > 200) {

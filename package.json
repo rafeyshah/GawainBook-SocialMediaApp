@@ -10,7 +10,9 @@
     "start": "npm --prefix Node-Rest-API start",
     "test:backend": "npm --prefix Node-Rest-API test",
     "test:frontend": "cd react-frontend && npx -y -p node@16 node node_modules/react-scripts/bin/react-scripts.js test --watchAll=false",
-    "test": "npm run test:backend && npm run test:frontend"
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:e2e": "cd e2e && npx playwright test",
+    "test:e2e:live": "npm --prefix e2e run test:live"
   },
   "dependencies": {
     "@neon/config": "^1.14.0",

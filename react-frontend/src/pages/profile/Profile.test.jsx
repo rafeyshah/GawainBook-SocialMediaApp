@@ -155,3 +155,32 @@ test("other failures show the error message", async () => {
   renderProfile("sam");
   expect(await screen.findByRole("alert")).toHaveTextContent("Can't reach the server");
 });
+
+test("your own profile shows your reading profile and blocked readers", async () => {
+  axios.get.mockImplementation((url) => {
+    if (url.startsWith("/users?username=")) return Promise.resolve({ data: { ...ME, followers: [], followings: [], favoriteGenres: ["Romantasy"], pace: 3 } });
+    if (url === "/blocks") return Promise.resolve({ data: [{ _id: "u7", username: "wick" }] });
+    return Promise.resolve({ data: [] });
+  });
+  renderProfile(ME.username);
+  await header();
+  expect(screen.getByRole("region", { name: "Reading profile" })).toHaveTextContent("Romantasy");
+  expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  expect(await screen.findByRole("region", { name: "Blocked readers" })).toHaveTextContent("wick");
+  expect(screen.queryByRole("button", { name: /^Block / })).toBeNull();
+});
+
+test("blocking a reader from their profile hides their posts and Follow button", async () => {
+  jest.spyOn(window, "confirm").mockReturnValue(true);
+  mockGets({ ...SAM, followers: [ME._id] });
+  axios.put.mockResolvedValueOnce({ data: { blocked: true } });
+  const { dispatch } = renderProfile("sam");
+  const h = await header();
+  userEvent.click(within(h).getByRole("button", { name: "Block sam" }));
+  expect(await screen.findByText("You've blocked sam")).toBeInTheDocument();
+  expect(axios.put).toHaveBeenCalledWith("/blocks/u2");
+  expect(dispatch).toHaveBeenCalledWith({ type: "UNFOLLOW", payload: "u2" });
+  expect(within(h).queryByRole("button", { name: /Follow/ })).toBeNull();
+  expect(within(h).getByText(/followers/)).toHaveTextContent("0 followers");
+  window.confirm.mockRestore();
+});
