@@ -115,3 +115,32 @@
 .profileState .btn {
   text-decoration: none;
 }
+
+.profileCover {
+  position: relative;
+}
+
+.profileCoverEdit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.profileAvatar {
+  position: relative;
+}
+
+.profileAvatarEdit {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+}
+
+.profileAvatarEdit .photoError {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 240px;
+  margin-top: 8px;
+  text-align: left;
+}

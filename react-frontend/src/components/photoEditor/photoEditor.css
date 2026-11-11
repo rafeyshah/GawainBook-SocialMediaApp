@@ -1,0 +1,57 @@
+.photoEditor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.photoEditorButtons {
+  display: flex;
+  gap: 6px;
+}
+
+.photoButton {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/* Small round camera button on the avatar. */
+.photoBadge {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.photoBadge:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.photoBadge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.photoBadge:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.photoError {
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: right;
+  color: var(--danger);
+  background: var(--danger-bg);
+}

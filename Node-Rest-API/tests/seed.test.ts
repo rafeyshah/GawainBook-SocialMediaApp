@@ -31,6 +31,19 @@ describe("demo data is realistic and safe", () => {
     expect(new Set(codes).size).toBe(codes.length);
   });
 
+  test("every sample reader has a distinct bundled photo that exists on disk", () => {
+    const fs = require("fs") as typeof import("fs");
+    const path = require("path") as typeof import("path");
+    const { PICTURE_KEY } = require("../src/routes/users") as typeof import("../src/routes/users");
+    const photos = SAMPLE_USERS.map((u) => u.photo);
+    expect(photos.every(Boolean)).toBe(true);
+    expect(new Set(photos).size).toBe(photos.length);
+    for (const p of photos) {
+      expect(PICTURE_KEY.test(p!)).toBe(true);
+      expect(fs.existsSync(path.join(__dirname, "../public/images", p!))).toBe(true);
+    }
+  });
+
   test("progress values are within each book", () => {
     for (const u of SAMPLE_USERS) {
       for (const [slug, [, ch]] of Object.entries(u.reading)) expect(ch).toBeLessThanOrEqual(chapterCount(slug));
@@ -83,6 +96,7 @@ describe("seedDemo / removeDemo", () => {
     const [u] = await getDb().select().from(users).where(eq(users.username, "elinor_reads"));
     expect(u.email).toBe(`elinor_reads@${SAMPLE_EMAIL_DOMAIN}`);
     expect(u.bio).toMatch(/Sample reader/);
+    expect(u.profilePicture).toBe("person/8.jpeg");
     const c = await newClient();
     expect((await c.post("/api/auth/login", { email: sampleEmail("elinor_reads"), password: "sample-pass-1" })).status).toBe(200);
   });

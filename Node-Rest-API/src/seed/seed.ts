@@ -72,10 +72,21 @@ export async function seedDemo(
         throw new Error(`A real account already uses the username "${u.username}"; refusing to overwrite it.`);
       }
       const [row] = existing
-        ? await tx.update(users).set({ passwordHash, bio: SAMPLE_BIO, city: u.city ?? null }).where(eq(users.id, existing.id)).returning()
+        ? await tx
+            .update(users)
+            .set({ passwordHash, bio: SAMPLE_BIO, city: u.city ?? null, profilePicture: u.photo ?? "" })
+            .where(eq(users.id, existing.id))
+            .returning()
         : await tx
             .insert(users)
-            .values({ username: u.username, email: sampleEmail(u.username), passwordHash, bio: SAMPLE_BIO, city: u.city ?? null })
+            .values({
+              username: u.username,
+              email: sampleEmail(u.username),
+              passwordHash,
+              bio: SAMPLE_BIO,
+              city: u.city ?? null,
+              profilePicture: u.photo ?? "",
+            })
             .returning();
       userId.set(u.username, row.id);
     }

@@ -81,19 +81,22 @@ export const SOURCE_NOTE =
 
 export interface SeedUser {
   username: string;
+  // A bundled photo in Node-Rest-API/public/images/person/ (from the original
+  // project; its source licence isn't recorded).
+  photo?: string;
   city?: string;
   // bookSlug → [shelf, chapter]
   reading: Record<string, ["want" | "reading" | "finished", number]>;
 }
 
 export const SAMPLE_USERS: SeedUser[] = [
-  { username: "elinor_reads", city: "Bath", reading: { "pride-and-prejudice": ["reading", 15], "the-wonderful-wizard-of-oz": ["want", 0] } },
-  { username: "darcy_fan", city: "Derbyshire", reading: { "pride-and-prejudice": ["finished", 61], "the-wonderful-wizard-of-oz": ["finished", 24] } },
-  { username: "marianne_b", city: "Devon", reading: { "pride-and-prejudice": ["reading", 3] } },
-  { username: "lizzy_books", city: "Hertfordshire", reading: { "pride-and-prejudice": ["reading", 22], "persuasion": ["want", 0] } },
-  { username: "tinwoodsman", city: "Kansas City", reading: { "the-wonderful-wizard-of-oz": ["reading", 12] } },
-  { username: "dorothy_g", city: "Kansas", reading: { "the-wonderful-wizard-of-oz": ["finished", 24], "pride-and-prejudice": ["reading", 6] } },
-  { username: "anne_elliot", city: "Lyme", reading: { "persuasion": ["reading", 5] } },
+  { username: "elinor_reads", photo: "person/8.jpeg", city: "Bath", reading: { "pride-and-prejudice": ["reading", 15], "the-wonderful-wizard-of-oz": ["want", 0] } },
+  { username: "darcy_fan", photo: "person/2.jpeg", city: "Derbyshire", reading: { "pride-and-prejudice": ["finished", 61], "the-wonderful-wizard-of-oz": ["finished", 24] } },
+  { username: "marianne_b", photo: "person/4.jpeg", city: "Devon", reading: { "pride-and-prejudice": ["reading", 3] } },
+  { username: "lizzy_books", photo: "person/10.jpeg", city: "Hertfordshire", reading: { "pride-and-prejudice": ["reading", 22], "persuasion": ["want", 0] } },
+  { username: "tinwoodsman", photo: "person/7.jpeg", city: "Kansas City", reading: { "the-wonderful-wizard-of-oz": ["reading", 12] } },
+  { username: "dorothy_g", photo: "person/9.jpeg", city: "Kansas", reading: { "the-wonderful-wizard-of-oz": ["finished", 24], "pride-and-prejudice": ["reading", 6] } },
+  { username: "anne_elliot", photo: "person/1.jpeg", city: "Lyme", reading: { "persuasion": ["reading", 5] } },
 ];
 
 // Real accounts passed with --member get this reading state, so a signed-in

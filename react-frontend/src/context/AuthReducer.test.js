@@ -52,6 +52,17 @@ describe("AuthReducer", () => {
     expect(AuthReducer(state, { type: "FOLLOW", payload: "b" }).user.followings).toEqual(["b"]);
   });
 
+  test("UPDATE_USER merges fields into the signed-in user", () => {
+    const next = AuthReducer(signedIn, { type: "UPDATE_USER", payload: { profilePicture: "uploads/1.png" } });
+    expect(next.user).toEqual({ ...user, profilePicture: "uploads/1.png" });
+    expect(user).not.toHaveProperty("profilePicture");
+  });
+
+  test("UPDATE_USER is ignored when signed out", () => {
+    const out = { ...INITIAL_STATE, checking: false };
+    expect(AuthReducer(out, { type: "UPDATE_USER", payload: { profilePicture: "x" } })).toBe(out);
+  });
+
   test("unknown actions return the same state", () => {
     expect(AuthReducer(signedIn, { type: "NOPE" })).toBe(signedIn);
   });

@@ -14,6 +14,10 @@ const AuthReducer = (state, action) => {
       return { ...state, error: false };
     case "LOGOUT":
       return { user: null, isFetching: false, error: false, checking: false };
+    // e.g. after changing your profile photo, so the top bar updates at once.
+    case "UPDATE_USER":
+      if (!state.user) return state;
+      return { ...state, user: { ...state.user, ...action.payload } };
     case "FOLLOW":
       if (!state.user) return state;
       return {

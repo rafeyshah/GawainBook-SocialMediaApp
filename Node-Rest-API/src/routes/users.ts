@@ -12,6 +12,10 @@ router.use(requireAuth);
 
 const notFound = () => new HttpError(404, "User not found.");
 
+// Profile and cover images: a key from /api/upload, or a bundled default
+// image (public/images/person/...). Never an arbitrary URL or path.
+export const PICTURE_KEY = /^(?:uploads\/[\w-]+|person\/[\w-]+)\.(?:png|jpe?g|gif|webp)$/i;
+
 async function findUser(id: unknown) {
   if (!isId(id)) return undefined;
   const [user] = await getDb().select().from(users).where(eq(users.id, id));
@@ -42,6 +46,13 @@ router.put(
     const update: Record<string, unknown> = {};
     for (const [apiName, column] of Object.entries(EDITABLE)) {
       if (req.body[apiName] !== undefined) update[column] = req.body[apiName];
+    }
+    for (const pic of ["profilePicture", "coverPicture"]) {
+      if (update[pic] !== undefined) {
+        const v = update[pic] === null ? "" : String(update[pic]);
+        if (v !== "" && !PICTURE_KEY.test(v)) throw new HttpError(400, "Please upload the image first.");
+        update[pic] = v;
+      }
     }
     if (update.relationship !== undefined && update.relationship !== null) {
       const r = Number(update.relationship);

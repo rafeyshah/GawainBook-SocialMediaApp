@@ -69,6 +69,44 @@ test("your own profile has no Follow button but has the composer", async () => {
   expect(await screen.findByRole("form", { name: "Create a post" })).toBeInTheDocument();
 });
 
+test("on your own profile you can change your photo and cover", async () => {
+  mockGets({ ...ME, followers: [], followings: [] });
+  renderProfile(ME.username);
+  await header();
+  expect(screen.getByRole("button", { name: "Change photo" })).toHaveClass("photoBadge");
+  expect(screen.getByRole("button", { name: "Change cover" })).toBeInTheDocument();
+  // No photo yet, so nothing to remove.
+  expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+});
+
+test("uploading a new photo updates the profile straight away", async () => {
+  mockGets({ ...ME, followers: [], followings: [] });
+  axios.post.mockResolvedValueOnce({ data: { filename: "uploads/9-z.png" } });
+  axios.put.mockResolvedValueOnce({ data: { profilePicture: "uploads/9-z.png" } });
+  renderProfile(ME.username);
+  const h = await header();
+  userEvent.upload(screen.getByTestId("profilePicture-file"), new File(["x"], "me.png", { type: "image/png" }));
+  await waitFor(() => expect(h.querySelector("img.avatar")).not.toBeNull());
+  expect(h.querySelector("img.avatar").getAttribute("src")).toMatch(/uploads\/9-z\.png$/);
+  // With a photo set, a Remove option appears.
+  expect(screen.getAllByRole("button", { name: "Remove" }).length).toBeGreaterThan(0);
+});
+
+test("a cover image is shown as the banner background", async () => {
+  mockGets({ ...SAM, coverPicture: "uploads/c-1.jpg" });
+  renderProfile("sam");
+  await header();
+  expect(screen.getByTestId("profile-cover").style.backgroundImage).toMatch(/uploads\/c-1\.jpg/);
+});
+
+test("other readers' profiles have no photo controls", async () => {
+  mockGets(SAM);
+  renderProfile("sam");
+  await header();
+  expect(screen.queryByRole("button", { name: /Change (photo|cover)/ })).toBeNull();
+  expect(screen.getByRole("button", { name: "Follow" })).toBeInTheDocument();
+});
+
 test("following a reader updates the button, count and app state", async () => {
   mockGets(SAM);
   axios.put.mockResolvedValueOnce({ data: { following: true } });

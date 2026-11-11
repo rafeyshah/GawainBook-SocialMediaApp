@@ -156,6 +156,68 @@ describe("PUT /api/users/:id", () => {
   });
 });
 
+describe("profile and cover photos", () => {
+  const PNG = Buffer.from(
+    "89504e470d0a1a0a0000000d4948445200000001000000010806000000" +
+      "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082",
+    "hex"
+  );
+
+  test("upload an image, then set it as your profile photo; everyone sees it", async () => {
+    const a = await signUp();
+    const b = await signUp();
+    const { filename } = (await a.client.upload(PNG, "me.png", "image/png")).body;
+    const res = await a.client.put(`/api/users/${a.user._id}`, { profilePicture: filename });
+    expect(res.status).toBe(200);
+    expect(res.body.profilePicture).toBe(filename);
+    expect((await b.client.get("/api/users", { userId: a.user._id })).body.profilePicture).toBe(filename);
+    expect((await a.client.get("/api/auth/me")).body.profilePicture).toBe(filename);
+  });
+
+  test("cover photos work the same way", async () => {
+    const a = await signUp();
+    const res = await a.client.put(`/api/users/${a.user._id}`, { coverPicture: "uploads/123-abc.jpg" });
+    expect(res.body.coverPicture).toBe("uploads/123-abc.jpg");
+  });
+
+  test("bundled default images are allowed", async () => {
+    const a = await signUp();
+    expect((await a.client.put(`/api/users/${a.user._id}`, { profilePicture: "person/3.jpeg" })).status).toBe(200);
+  });
+
+  test.each(["", null])("%p removes the photo", async (value) => {
+    const a = await signUp();
+    await a.client.put(`/api/users/${a.user._id}`, { profilePicture: "uploads/1-a.png" });
+    const res = await a.client.put(`/api/users/${a.user._id}`, { profilePicture: value });
+    expect(res.status).toBe(200);
+    expect(res.body.profilePicture).toBe("");
+  });
+
+  test.each([
+    "https://evil.example/tracker.png",
+    "//evil.example/x.png",
+    "../../index.js",
+    "uploads/../secret.png",
+    "uploads/x.svg",
+    "uploads/x.html",
+    "javascript:alert(1)",
+    "person/../../package.json",
+    "/etc/passwd",
+  ])("rejects %p", async (value) => {
+    const a = await signUp();
+    const res = await a.client.put(`/api/users/${a.user._id}`, { profilePicture: value });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/upload the image first/);
+    expect((await a.client.get("/api/auth/me")).body.profilePicture).toBe("");
+  });
+
+  test("you can't change someone else's photo", async () => {
+    const a = await signUp();
+    const b = await signUp();
+    expect((await a.client.put(`/api/users/${b.user._id}`, { profilePicture: "person/1.jpeg" })).status).toBe(403);
+  });
+});
+
 describe("DELETE /api/users/:id", () => {
   test("deletes your account and everything that belongs to it", async () => {
     const a = await signUp();

@@ -8,6 +8,7 @@ import Avatar from "../../components/avatar/Avatar";
 import { AuthContext } from "../../context/AuthContext";
 import { errorMessage } from "../../apiCalls";
 import BookCover from "../../components/book/BookCover";
+import PhotoEditor from "../../components/photoEditor/PhotoEditor";
 import "../reading/reading.css";
 import "./profile.css";
 
@@ -171,14 +172,48 @@ export default function Profile() {
         <section className="profileHeader card" aria-label={`${profile.username}'s profile`}>
           <div
             className="profileCover"
+            data-testid="profile-cover"
             style={profile.coverPicture ? { backgroundImage: `url(${PF + profile.coverPicture})` } : undefined}
-          />
+          >
+            {isMe && (
+              <div className="profileCoverEdit">
+                <PhotoEditor
+                  field="coverPicture"
+                  label="cover"
+                  hasImage={Boolean(profile.coverPicture)}
+                  onChange={(v) => setProfile((p) => ({ ...p, coverPicture: v }))}
+                />
+              </div>
+            )}
+          </div>
           <div className="profileBody">
             <div className="profileTopRow">
               <div className="profileAvatar">
                 <Avatar user={profile} size={88} />
+                {isMe && (
+                  <div className="profileAvatarEdit">
+                    <PhotoEditor
+                      field="profilePicture"
+                      label="photo"
+                      variant="badge"
+                      hasImage={Boolean(profile.profilePicture)}
+                      onChange={(v) => setProfile((p) => ({ ...p, profilePicture: v }))}
+                    />
+                  </div>
+                )}
               </div>
-              {!isMe && <FollowButton profile={profile} onChange={adjustFollowers} />}
+              {isMe ? (
+                profile.profilePicture ? (
+                  <PhotoEditor
+                    field="profilePicture"
+                    label="photo"
+                    hasImage
+                    onChange={(v) => setProfile((p) => ({ ...p, profilePicture: v }))}
+                  />
+                ) : null
+              ) : (
+                <FollowButton profile={profile} onChange={adjustFollowers} />
+              )}
             </div>
             <h1 className="profileName">{profile.username}</h1>
             {profile.desc && <p className="profileDesc">{profile.desc}</p>}
