@@ -35,11 +35,11 @@ What exists in this repo now, compared with the concept's MVP:
 | Area | Status | Notes |
 |---|---|---|
 | Sign-up / sign-in UI | ✅ Complete | Combined page, light/dark themes, inline errors, tests |
-| **Real authentication** | ❌ **Missing** | The API trusts `userId` from the request body, so anyone can act as anyone. **Fix this first.** |
+| **Real authentication** | ✅ Done (Week 1) | httpOnly session cookie + CSRF, `requireAuth`, `req.user` from the session; `tests/security.test.ts` proves nobody can act as another user |
 | Profiles | 🟡 Partial | Bio, city, follow counts. No genres, pace, language or favourite books |
 | Follow / unfollow | ✅ Complete | Validated, tested |
 | Posts, likes, feed | ✅ Complete | General feed. Note: the concept defers a "complex public feed" |
-| Image upload | 🟡 Partial | Safe and validated, but stored on the server disk, which Render wipes on every deploy and restart |
+| Image upload | ✅ Done (Week 1) | Neon object storage with signed links; survives redeploys. Profile photo and cover uploads added |
 | Shelves (want / reading / read) | ✅ Built (11 Nov) | Library page, shelf picker, progress per book |
 | Books, editions, chapters | 🟡 Built without editions (11 Nov) | Books + chapters (`seq`, prologue = 0). One edition per book for now |
 | Reading circles, membership, invitations | ✅ Built (11 Nov) | Public/private circles, roles, invite codes; circles are the home screen (D9) |
@@ -47,10 +47,10 @@ What exists in this repo now, compared with the concept's MVP:
 | Reporting, blocking, moderation | ❌ Missing | Required before inviting real readers |
 | Notifications / reminders | ❌ Missing | |
 | AI reading assistant | ❌ Missing | |
-| Tests | ✅ Good base | 71 backend tests, 113 frontend tests |
-| Deploy | ✅ Works | Render single service + MongoDB Atlas; auto-deploys on every push to `master` |
-| TypeScript | ❌ Not started | |
-| Observability | 🟡 Minimal | `/api/health` only |
+| Tests | ✅ Strong | 395 backend tests, 285 frontend tests; CI green on every push |
+| Deploy | ✅ Works | Render single service + Neon Postgres (MongoDB retired); auto-deploys on every push to `master` |
+| TypeScript | ✅ Backend done (Week 1) | Backend in TypeScript with Drizzle; frontend stays JS (D3) |
+| Observability | 🟡 Minimal | `/api/health` with database, storage and API version |
 
 **Bottom line:** about 20% of the MVP exists. The visual design, the deploy pipeline and the testing habit are done. The product's core (circles, progress, spoiler rules) and its security base (auth) are not.
 
@@ -84,7 +84,7 @@ Goal: make the existing app safe to build on, lock the decisions, and start talk
 | **Tue 10** | Commit and push the current redesign. Create `docs/decisions/` and write D1–D9. Turn on GitHub Actions to run both test suites on every push. | CI is green on GitHub | ✅ |
 | **Wed 11** | **Auth, part 1:** login issues an httpOnly session cookie; add `requireAuth` middleware; `req.user` comes from the session, never from the body | Middleware tests: no cookie → 401; tampered cookie → 401 | ✅ |
 | **Thu 12** | **Auth, part 2:** move every route to `req.user.id`; remove `userId` from request bodies; add logout and `GET /api/auth/me`; frontend uses `/me` instead of trusting localStorage | Tests prove user A can't edit, like or post as user B | ✅ |
-| **Fri 13** | Rate limiting on login, register and upload. Request validation with a schema library (e.g. zod). Security headers review. | Brute-force test gets 429 responses | ✅ (validation uses tested hand-written validators in `src/http.ts`, not zod) |
+| **Fri 13** | Rate limiting on login, register and upload. Request validation with a schema library (e.g. zod). Security headers review. | Brute-force test gets 429 responses (validation uses tested validators in `src/http.ts` instead of zod) | ✅ |
 | **Sat 14** | Set up Postgres + migration tool + TypeScript in the backend. Port `users` and `follows` tables; run both databases side by side behind a flag | New tests pass against Postgres | ✅ |
 | **Sun 15** | Port posts and likes to Postgres; write a one-off Mongo → Postgres migration script; move image uploads to object storage | Staging runs fully on Postgres | ✅ |
 | **Mon 16** | Switch production to Postgres. Remove Mongo code. Update README. Retro: what slipped? | Live site works; old data migrated; tests green | ✅ |
