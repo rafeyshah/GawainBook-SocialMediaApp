@@ -79,22 +79,22 @@ Goal: make the existing app safe to build on, lock the decisions, and start talk
 
 ### Build track (~14 h)
 
-| Day | Work | Done when |
-|---|---|---|
-| **Tue 10** | Commit and push the current redesign. Create `docs/decisions/` and write D1–D9. Turn on GitHub Actions to run both test suites on every push. | CI is green on GitHub |
-| **Wed 11** | **Auth, part 1:** login issues an httpOnly session cookie; add `requireAuth` middleware; `req.user` comes from the session, never from the body | Middleware tests: no cookie → 401; tampered cookie → 401 |
-| **Thu 12** | **Auth, part 2:** move every route to `req.user.id`; remove `userId` from request bodies; add logout and `GET /api/auth/me`; frontend uses `/me` instead of trusting localStorage | Tests prove user A can't edit, like or post as user B |
-| **Fri 13** | Rate limiting on login, register and upload. Request validation with a schema library (e.g. zod). Security headers review. | Brute-force test gets 429 responses |
-| **Sat 14** | Set up Postgres + migration tool + TypeScript in the backend. Port `users` and `follows` tables; run both databases side by side behind a flag | New tests pass against Postgres |
-| **Sun 15** | Port posts and likes to Postgres; write a one-off Mongo → Postgres migration script; move image uploads to object storage | Staging runs fully on Postgres |
-| **Mon 16** | Switch production to Postgres. Remove Mongo code. Update README. Retro: what slipped? | Live site works; old data migrated; tests green |
+| Day | Work | Done when | Done |
+|---|---|---|:---:|
+| **Tue 10** | Commit and push the current redesign. Create `docs/decisions/` and write D1–D9. Turn on GitHub Actions to run both test suites on every push. | CI is green on GitHub | ✅ |
+| **Wed 11** | **Auth, part 1:** login issues an httpOnly session cookie; add `requireAuth` middleware; `req.user` comes from the session, never from the body | Middleware tests: no cookie → 401; tampered cookie → 401 | ✅ |
+| **Thu 12** | **Auth, part 2:** move every route to `req.user.id`; remove `userId` from request bodies; add logout and `GET /api/auth/me`; frontend uses `/me` instead of trusting localStorage | Tests prove user A can't edit, like or post as user B | ✅ |
+| **Fri 13** | Rate limiting on login, register and upload. Request validation with a schema library (e.g. zod). Security headers review. | Brute-force test gets 429 responses | ✅ (validation uses tested hand-written validators in `src/http.ts`, not zod) |
+| **Sat 14** | Set up Postgres + migration tool + TypeScript in the backend. Port `users` and `follows` tables; run both databases side by side behind a flag | New tests pass against Postgres | ✅ |
+| **Sun 15** | Port posts and likes to Postgres; write a one-off Mongo → Postgres migration script; move image uploads to object storage | Staging runs fully on Postgres | ✅ |
+| **Mon 16** | Switch production to Postgres. Remove Mongo code. Update README. Retro: what slipped? | Live site works; old data migrated; tests green | ✅ |
 
 ### Product track (~6 h)
 
 - [x] Write the **interview script** (§11.1) and a one-paragraph recruiting post. ✅ [script](../discovery/interview-script.md) · [posts](../discovery/recruiting-post.md)
 - [ ] Book **at least 3 interviews** with fantasy, romantasy or romance readers and **at least 1 with a book-club organizer** for next week.
 - [ ] 🟡 Built, not yet open: put up a **waitlist page** (a simple form; collect email, favourite genre, and "Do you organize a book club?"). Add the privacy notice and German legal notice (Impressum) before collecting any email (§12).
-- [ ] Download the chosen book's source text; record its source URL, licence text and date in `docs/corpus/pride-and-prejudice/SOURCE.md`.
+- [x] Download the chosen book's source text; record its source URL, licence text and date in `docs/corpus/pride-and-prejudice/SOURCE.md`. ✅ [SOURCE.md](../corpus/pride-and-prejudice/SOURCE.md) (Gutenberg #1342, SHA-256 checked by `tests/corpus.test.ts`; 61 chapters split by `src/corpus/gutenberg.ts`)
 
 ### Week 1 exit checklist
 
@@ -102,7 +102,7 @@ Goal: make the existing app safe to build on, lock the decisions, and start talk
 - [x] Production runs on Postgres; MongoDB retired ✅ (Neon, verified live 10 Nov)
 - [x] Uploads survive a redeploy ✅ (Neon object storage)
 - [x] Decisions D1–D9 written ✅ ([decision log](../decisions/README.md))
-- [ ] CI runs on every push. Workflow added (`.github/workflows/ci.yml`); tick when the first run on GitHub is green
+- [x] CI runs on every push ✅ (`.github/workflows/ci.yml`; green on GitHub since 10 Nov)
 - [ ] 3+ interviews booked; waitlist live. Script, posts and waitlist page are ready ([discovery](../discovery/README.md)); waiting on bookings and the Impressum details
 
 **If the week slips:** auth is non-negotiable. The database move can spill into Week 2. Don't start circles on MongoDB "temporarily".

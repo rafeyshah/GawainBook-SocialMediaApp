@@ -255,7 +255,7 @@ npm run test:frontend     # React tests
 - **Backend:** Jest and Supertest against a **real, throwaway PostgreSQL server** (embedded-postgres), with the real migrations applied, so constraints and cascades are tested exactly as they run in production. Object storage is tested with a fake S3 client. Nothing touches Neon.
 - **Frontend:** Jest and React Testing Library, with real-browser checks of key flows against the live site.
 
-Current totals: **360 backend tests** and **285 frontend tests**, all passing.
+Current totals: **395 backend tests** and **285 frontend tests**, all passing.
 
 ## Deployment
 

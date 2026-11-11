@@ -1,0 +1,2 @@
+# Source texts are stored byte-for-byte; their checksums are verified by tests.
+docs/corpus/**/*.txt -text
