@@ -71,8 +71,9 @@ test("two readers at different chapters: invite, spoiler lock, reply, notificati
     const linkForm = org.getByRole("form", { name: "Create an invite link" });
     await linkForm.getByLabel("Can be used by").selectOption("5");
     await linkForm.getByRole("button", { name: "Create link" }).click();
-    const inviteText = await org.getByRole("list", { name: "Active invite links" }).locator(".inviteLink").first().innerText();
-    const invitePath = new URL(inviteText).pathname;
+    // The link is shown shortened (…/join/<code>); the full URL is in its title.
+    const inviteUrl = await org.getByRole("list", { name: "Active invite links" }).locator(".inviteLink").first().getAttribute("title");
+    const invitePath = new URL(inviteUrl).pathname;
     expect(invitePath).toMatch(/^\/join\/[\w-]{12}$/);
 
     // 3. A new reader follows the link: signs up first, comes back to it.

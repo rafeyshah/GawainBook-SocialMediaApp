@@ -180,8 +180,8 @@ Put **one** function, `canReadThread(user, thread)`, in a single policy module. 
 
 ### Phase 1 exit gate (target 7 Dec)
 
-- [ ] The full journey works on the live site with two test accounts at different chapters. Passes locally end to end; run `npm run test:e2e:live` after this is deployed
-- [ ] The test matrix in §4.4 passes in CI. All 10 rows are tested locally (538 backend, 389 frontend, 1 end-to-end); tick when the first CI run with the new `e2e` job is green
+- [x] The full journey works on the live site with two test accounts at different chapters ✅ (Playwright against https://gawainbook.onrender.com, 11 Nov; test accounts deleted afterwards)
+- [ ] The test matrix in §4.4 passes in CI. Backend and frontend jobs are green; the first `e2e` run failed on a test bug (it read the shortened invite link), now fixed. Tick when the next run is green
 - [x] Reporting and blocking work ✅ (API, UI and tests; checked in a real browser 11 Nov)
 - [ ] 8+ interviews done; notes summarised (§11)
 
