@@ -80,10 +80,10 @@ export default function Library() {
           {list.length === 0 ? (
             <div className="card emptyCard">{EMPTY_TEXT[tab]}</div>
           ) : (
-            <div className="cardGrid">
+            <div className="cardGrid libraryGrid">
               {list.map((b) => (
                 <Link key={b._id} to={`/books/${b.slug}`} className="card bookTile">
-                  <BookCover book={b} size="sm" />
+                  <BookCover book={b} size="md" />
                   <span className="rowCardBody">
                     <span className="rowCardTitle">{b.title}</span>
                     <span className="rowCardMeta">{b.author}</span>

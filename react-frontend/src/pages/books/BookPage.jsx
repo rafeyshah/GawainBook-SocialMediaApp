@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { LockOutlined, PeopleOutline } from "@material-ui/icons";
 import Layout from "../../components/layout/Layout";
-import BookCover, { ProgressBar } from "../../components/book/BookCover";
+import BookCover, { ProgressBar, chapterName } from "../../components/book/BookCover";
 import ProgressEditor from "../../components/book/ProgressEditor";
 import { errorMessage } from "../../apiCalls";
 import { plural } from "../circles/CirclesHome";
@@ -63,6 +63,7 @@ export default function BookPage() {
   };
 
   let content;
+  let aside = null;
   if (status === "loading") {
     content = <div className="skeleton" style={{ height: 280 }} aria-busy="true" aria-label="Loading book" />;
   } else if (status !== "ready") {
@@ -109,6 +110,37 @@ export default function BookPage() {
           </div>
         </section>
 
+        <section className="section" aria-labelledby="chaptersTitle">
+          <h2 className="sectionTitle" id="chaptersTitle">
+            Chapters
+          </h2>
+          <div className="card cardPad">
+            <ol className="chapterMap" aria-label={`${book.chapterCount} chapters`}>
+              {book.chapters.map((c) => {
+                const state = c.seq === book.chapter && book.shelf === "reading" ? "current" : c.seq <= book.chapter ? "read" : "";
+                return (
+                  <li
+                    key={c.seq}
+                    className={`chapterCell ${state}`}
+                    title={chapterName(c.seq, c.title)}
+                    aria-label={`${chapterName(c.seq, c.title)}${state === "current" ? ", you're here" : state === "read" ? ", read" : ""}`}
+                  >
+                    {c.seq}
+                  </li>
+                );
+              })}
+            </ol>
+            <div className="chapterLegend" aria-hidden="true">
+              <span className="read">Read</span>
+              <span className="current">You're here</span>
+              <span>Ahead</span>
+            </div>
+          </div>
+        </section>
+      </>
+    );
+    // Circles reading this book sit beside the details on wide screens.
+    aside = (
         <section className="section" aria-labelledby="circlesTitle">
           <h2 className="sectionTitle" id="circlesTitle">
             Circles reading this book
@@ -143,9 +175,12 @@ export default function BookPage() {
             </div>
           )}
         </section>
-      </>
     );
   }
 
-  return <Layout>{content}</Layout>;
+  return (
+    <Layout aside={aside}>
+      {content}
+    </Layout>
+  );
 }

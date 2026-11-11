@@ -231,7 +231,7 @@ export default function CirclesHome() {
       )}
 
       {!data && !error ? (
-        <div aria-busy="true" aria-label="Loading circles" className="cardList">
+        <div aria-busy="true" aria-label="Loading circles" className="cardGrid circleGrid">
           <div className="skeleton" style={{ height: 116 }} />
           <div className="skeleton" style={{ height: 116 }} />
         </div>
@@ -247,7 +247,7 @@ export default function CirclesHome() {
                   Library
                 </Link>
               </div>
-              <div className="cardList">
+              <div className="cardGrid continueGrid">
                 {reading.map((b) => (
                   <div className="card rowCard" key={b._id}>
                     <Link to={`/books/${b.slug}`} aria-label={b.title}>
@@ -282,7 +282,7 @@ export default function CirclesHome() {
                 Join one below, or start your own and invite friends.
               </div>
             ) : (
-              <div className="cardList">
+              <div className="cardGrid circleGrid">
                 {data.mine.map((c) => (
                   <CircleCard key={c._id} circle={c} />
                 ))}
@@ -295,7 +295,7 @@ export default function CirclesHome() {
               <h2 className="sectionTitle" id="discoverTitle">
                 Discover circles
               </h2>
-              <div className="cardList">
+              <div className="cardGrid circleGrid">
                 {data.discover.map((c) => (
                   <CircleCard
                     key={c._id}

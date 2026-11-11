@@ -185,6 +185,7 @@ export default function CirclePage() {
   };
 
   let content;
+  let aside = null;
   if (status === "loading") {
     content = <div className="skeleton" style={{ height: 220 }} aria-busy="true" aria-label="Loading circle" />;
   } else if (status !== "ready") {
@@ -257,35 +258,6 @@ export default function CirclePage() {
           </div>
         </section>
 
-        <section className="section" aria-labelledby="whereTitle">
-          <h2 className="sectionTitle" id="whereTitle">
-            Who's where
-          </h2>
-          <div className="card cardPad">
-            {circle.myRole && <ReaderTrack members={circle.members} total={total} meId={user._id} />}
-            <ul className="memberList" style={{ marginTop: circle.myRole ? 12 : 0 }}>
-              {circle.members.map((m) => (
-                <li key={m._id} className="memberItem">
-                  <Avatar user={m} size={30} />
-                  <span>
-                    <Link to={`/profile/${m.username}`}>{m.username}</Link>
-                    <span className="memberMeta">
-                      {m.role !== "member" ? `${m.role === "owner" ? "Organiser" : "Moderator"} · ` : ""}
-                      {typeof m.chapter === "number"
-                        ? m.chapter >= total
-                          ? "Finished"
-                          : m.chapter === 0
-                          ? "Not started"
-                          : `Chapter ${m.chapter}`
-                        : "Member"}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
         <section className="section" aria-labelledby="discTitle">
           <div className="sectionHead">
             <h2 className="sectionTitle" id="discTitle">
@@ -315,7 +287,42 @@ export default function CirclePage() {
         </section>
       </>
     );
+    // "Who's where" sits beside the discussions on wide screens.
+    aside = (
+        <section className="section" aria-labelledby="whereTitle">
+          <h2 className="sectionTitle" id="whereTitle">
+            Who's where
+          </h2>
+          <div className="card cardPad">
+            {circle.myRole && <ReaderTrack members={circle.members} total={total} meId={user._id} />}
+            <ul className="memberList" style={{ marginTop: circle.myRole ? 12 : 0 }}>
+              {circle.members.map((m) => (
+                <li key={m._id} className="memberItem">
+                  <Avatar user={m} size={30} />
+                  <span>
+                    <Link to={`/profile/${m.username}`}>{m.username}</Link>
+                    <span className="memberMeta">
+                      {m.role !== "member" ? `${m.role === "owner" ? "Organiser" : "Moderator"} · ` : ""}
+                      {typeof m.chapter === "number"
+                        ? m.chapter >= total
+                          ? "Finished"
+                          : m.chapter === 0
+                          ? "Not started"
+                          : `Chapter ${m.chapter}`
+                        : "Member"}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+    );
   }
 
-  return <Layout>{content}</Layout>;
+  return (
+    <Layout aside={aside}>
+      {content}
+    </Layout>
+  );
 }

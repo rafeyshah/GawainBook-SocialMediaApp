@@ -1,40 +1,78 @@
 .layout {
+  --sidebar-w: 256px;
+  --aside-w: 340px;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
 }
 
+/* Sidebar anchored to the left edge; content takes the rest of the width. */
 .layoutBody {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 24px 16px 64px;
   display: grid;
-  grid-template-columns: 220px minmax(0, 640px);
-  justify-content: center;
-  gap: 40px;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  min-height: calc(100vh - 60px);
+}
+
+.layoutContent {
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 32px clamp(20px, 3vw, 48px) 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 32px;
+}
+
+/* Text-heavy pages: keep lines readable and centre the column. */
+.layoutContent.reading .layoutMain {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 .layoutMain {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 28px;
 }
 
-@media (max-width: 860px) {
-  .layoutBody {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    padding-top: 16px;
+.layoutAside {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Wide screens: put the side panel next to the content. */
+@media (min-width: 1200px) {
+  .layoutContent.withAside {
+    grid-template-columns: minmax(0, 1fr) var(--aside-w);
   }
 
-  .layoutBody > .sidebar {
-    display: none;
+  .layoutContent.reading.withAside {
+    grid-template-columns: minmax(0, 760px) var(--aside-w);
+    justify-content: center;
+  }
+
+  .layoutContent.reading.withAside .layoutMain {
+    margin: 0;
+  }
+
+  .layoutAside {
+    position: sticky;
+    top: 92px;
+    align-self: start;
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
   }
 }
 
-.layoutMain {
-  gap: 24px;
+@media (max-width: 1100px) {
+  .layout {
+    --sidebar-w: 220px;
+  }
 }
 
 .mobileNav {
@@ -42,6 +80,19 @@
 }
 
 @media (max-width: 860px) {
+  .layoutBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .layoutBody > .sidebar {
+    display: none;
+  }
+
+  .layoutContent {
+    padding: 20px 16px 56px;
+    gap: 24px;
+  }
+
   .mobileNav {
     position: sticky;
     top: 60px;

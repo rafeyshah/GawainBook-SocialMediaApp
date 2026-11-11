@@ -1,10 +1,16 @@
+/* Full-height panel on the left edge of the screen. */
 .sidebar {
   position: sticky;
-  top: 84px;
+  top: 60px;
   align-self: start;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 28px;
+  padding: 24px 16px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
 }
 
 .sidebarNav {

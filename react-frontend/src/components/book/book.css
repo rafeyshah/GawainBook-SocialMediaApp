@@ -109,3 +109,28 @@
   font-size: 13px;
   color: var(--danger);
 }
+
+/* Small covers: never split a word mid-way (hyphenation isn't reliable in
+   every browser); tiny covers are decorative, the title sits next to them. */
+.bookCover.sm .bookCoverTitle {
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: manual;
+  font-size: 0.95em;
+}
+
+.bookCover.xs .bookCoverTitle {
+  display: none;
+}
+
+.bookCover.xs::before {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 16%;
+  top: 24%;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(253, 251, 247, 0.6);
+  box-shadow: 0 5px 0 rgba(253, 251, 247, 0.45);
+}

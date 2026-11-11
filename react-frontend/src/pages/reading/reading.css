@@ -699,3 +699,108 @@ a.bookTile:hover {
     flex-direction: column;
   }
 }
+
+/* Grids that use the full width on large screens. */
+.continueGrid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+}
+
+.circleGrid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  align-items: stretch;
+}
+
+.circleGrid > .rowCard {
+  height: 100%;
+}
+
+/* Two-column page body: main content + a side column (circle, book pages). */
+.chapterMap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+}
+
+.chapterCell {
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.chapterCell.read {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.chapterCell.current {
+  background: var(--accent);
+  color: #fff;
+}
+
+.chapterLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.chapterLegend span::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+  vertical-align: -1px;
+  background: var(--surface-2);
+}
+
+.chapterLegend .read::before {
+  background: var(--accent-soft);
+}
+
+.chapterLegend .current::before {
+  background: var(--accent);
+}
+
+ol.chapterMap {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.libraryGrid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+}
+
+.libraryGrid .bookTile {
+  gap: 18px;
+  padding: 18px;
+}
+
+.libraryGrid .rowCardTitle {
+  font-size: 17px;
+}
+
+@media (max-width: 560px) {
+  .sectionHead {
+    flex-wrap: wrap;
+  }
+
+  .joinCode {
+    width: 100%;
+  }
+
+  .joinCode .input {
+    flex: 1;
+    width: auto;
+  }
+}

@@ -203,11 +203,17 @@ export default function Profile() {
             </div>
           </div>
         </section>
-        <ProfileShelves username={profile.username} isMe={isMe} />
         <Feed username={profile.username} />
       </>
     );
   }
 
-  return <Layout>{content}</Layout>;
+  return (
+    <Layout
+      width="reading"
+      aside={status === "ready" ? <ProfileShelves username={profile.username} isMe={isMe} /> : null}
+    >
+      {content}
+    </Layout>
+  );
 }

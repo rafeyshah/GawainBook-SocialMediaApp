@@ -4,6 +4,7 @@ import axios from "axios";
 import { format } from "timeago.js";
 import { LockOutlined, DeleteOutline } from "@material-ui/icons";
 import Layout from "../../components/layout/Layout";
+import ReadingRail from "../../components/rail/ReadingRail";
 import Avatar from "../../components/avatar/Avatar";
 import { chapterName } from "../../components/book/BookCover";
 import { AuthContext } from "../../context/AuthContext";
@@ -156,5 +157,9 @@ export default function ThreadPage() {
     );
   }
 
-  return <Layout>{content}</Layout>;
+  return (
+    <Layout width="reading" aside={<ReadingRail />}>
+      {content}
+    </Layout>
+  );
 }

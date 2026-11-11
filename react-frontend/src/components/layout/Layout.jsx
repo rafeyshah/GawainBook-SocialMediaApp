@@ -27,15 +27,26 @@ function MobileNav() {
   );
 }
 
-// Shared shell for signed-in pages: top bar, sidebar and main column.
-export default function Layout({ children }) {
+// App shell for signed-in pages: a full-width top bar, a sidebar anchored to
+// the left edge, and a content area that uses the rest of the screen.
+//   width="wide"    overview pages (grids, dashboards) fill the space
+//   width="reading" text-heavy pages keep a comfortable line length
+//   aside           optional right-hand panel (moves below on narrow screens)
+export default function Layout({ children, width = "wide", aside = null }) {
   return (
     <div className="layout">
       <Topbar />
       <MobileNav />
       <div className="layoutBody">
         <Sidebar />
-        <main className="layoutMain">{children}</main>
+        <div className={`layoutContent ${width} ${aside ? "withAside" : ""}`} data-testid="layout-content">
+          <main className="layoutMain">{children}</main>
+          {aside && (
+            <aside className="layoutAside" aria-label="More for you">
+              {aside}
+            </aside>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,12 +1,13 @@
 import Layout from "../../components/layout/Layout";
 import Feed from "../../components/feed/Feed";
+import ReadingRail from "../../components/rail/ReadingRail";
 import "../reading/reading.css";
 
 // The general posts feed. Circles are the home screen (decision D9); the
 // feed lives on its own tab for posts that don't belong to one circle.
 export default function Home() {
   return (
-    <Layout>
+    <Layout width="reading" aside={<ReadingRail />}>
       <header className="pageHeader">
         <div>
           <h1 className="pageTitle">Feed</h1>

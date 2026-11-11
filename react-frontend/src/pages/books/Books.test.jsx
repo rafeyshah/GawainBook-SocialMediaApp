@@ -41,6 +41,36 @@ describe("BookPage", () => {
     expect(axios.get).toHaveBeenCalledWith("/books/pride-and-prejudice");
   });
 
+  test("chapter map marks read chapters and where you are", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail() });
+    renderBook();
+    const map = await screen.findByRole("list", { name: "61 chapters" });
+    const cells = within(map).getAllByRole("listitem");
+    expect(cells).toHaveLength(61);
+    expect(cells[0]).toHaveClass("read");
+    expect(cells[0]).toHaveAttribute("aria-label", "Chapter 1, read");
+    expect(cells[11]).toHaveClass("current");
+    expect(cells[11]).toHaveAttribute("aria-label", "Chapter 12, you're here");
+    expect(cells[12]).not.toHaveClass("read");
+    expect(cells[12]).toHaveAttribute("aria-label", "Chapter 13");
+  });
+
+  test("when finished, every chapter is read and none is 'current'", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ shelf: "finished", chapter: 61 }) });
+    renderBook();
+    const map = await screen.findByRole("list", { name: "61 chapters" });
+    const cells = within(map).getAllByRole("listitem");
+    expect(cells.every((c) => c.classList.contains("read"))).toBe(true);
+    expect(map.querySelector(".current")).toBeNull();
+  });
+
+  test("circles reading the book are in the side panel", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail() });
+    renderBook();
+    const aside = await screen.findByRole("complementary", { name: "More for you" });
+    expect(within(aside).getByRole("region", { name: "Circles reading this book" })).toBeInTheDocument();
+  });
+
   test("not on a shelf: no progress controls until you pick one", async () => {
     routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ shelf: null, chapter: 0, circles: [] }) });
     axios.put.mockResolvedValueOnce({ data: { shelf: "want", chapter: 0, chapterCount: 61 } });
