@@ -92,7 +92,7 @@ export interface SeedUser {
 }
 
 export const SAMPLE_USERS: SeedUser[] = [
-  { username: "elinor_reads", photo: "person/sample-elinor_reads.png", city: "Bath", profile: { genres: ["Classics", "Romance", "Historical fiction"], language: "en", pace: 5 }, reading: { "pride-and-prejudice": ["reading", 15], "the-wonderful-wizard-of-oz": ["want", 0] } },
+  { username: "elinor_reads", photo: "person/sample-elinor_reads.png", city: "Bath", profile: { genres: ["Classics", "Romance", "Historical fiction"], language: "en", pace: 5 }, reading: { "pride-and-prejudice": ["reading", 15], "the-wonderful-wizard-of-oz": ["reading", 10], "persuasion": ["reading", 6] } },
   { username: "darcy_fan", photo: "person/sample-darcy_fan.png", city: "Derbyshire", profile: { genres: ["Classics", "Romance"], language: "en", pace: 10 }, reading: { "pride-and-prejudice": ["finished", 61], "the-wonderful-wizard-of-oz": ["finished", 24] } },
   { username: "marianne_b", photo: "person/sample-marianne_b.png", city: "Devon", profile: { genres: ["Romance", "Poetry", "Classics"], language: "en", pace: 2 }, reading: { "pride-and-prejudice": ["reading", 3] } },
   { username: "lizzy_books", photo: "person/sample-lizzy_books.png", city: "Hertfordshire", profile: { genres: ["Romance", "Romantasy", "Classics"], language: "en", pace: 6 }, reading: { "pride-and-prejudice": ["reading", 22], "persuasion": ["want", 0] } },
@@ -275,7 +275,7 @@ export const CIRCLES: SeedCircle[] = [
     visibility: "public",
     schedule: "3 chapters a week · Friday chat",
     owner: "tinwoodsman",
-    members: ["dorothy_g", "darcy_fan", "scarecrow_thinks", "ozma_reads"],
+    members: ["dorothy_g", "darcy_fan", "scarecrow_thinks", "ozma_reads", "elinor_reads"],
     includeRealMembers: true,
     threads: [
       {
@@ -347,7 +347,7 @@ export const CIRCLES: SeedCircle[] = [
     visibility: "public",
     schedule: "1 chapter a day",
     owner: "anne_elliot",
-    members: ["lizzy_books", "wentworth_w", "emma_woodhouse"],
+    members: ["lizzy_books", "wentworth_w", "emma_woodhouse", "elinor_reads"],
     includeRealMembers: false,
     threads: [
       {
@@ -450,6 +450,23 @@ export const POSTS: SeedPost[] = [
     hoursAgo: 5,
     likes: ["elinor_reads", "lizzy_books", "anne_elliot", "catherine_m", "darcy_fan", "marianne_b"],
     comments: [{ author: "elinor_reads", body: "Adding this to our circle right now." }],
+  },
+  {
+    author: "elinor_reads",
+    desc: "Our circle's favourite habit: everyone posts the line they underlined twice. Chapter 10 winner so far: 'I am perfectly convinced by it that Mr. Darcy has no defect.' 😄",
+    hoursAgo: 30,
+    likes: ["darcy_fan", "lizzy_books", "emma_woodhouse", "marianne_b", "catherine_m"],
+    comments: [
+      { author: "darcy_fan", body: "Bold of you to quote that one at me." },
+      { author: "lizzy_books", body: "Underlined three times, actually." },
+    ],
+  },
+  {
+    author: "elinor_reads",
+    desc: "Joined the Persuasion Slow Read too. One chapter a day feels like the right pace for Anne. 🌊",
+    hoursAgo: 8,
+    likes: ["anne_elliot", "wentworth_w", "emma_woodhouse"],
+    comments: [{ author: "anne_elliot", body: "So glad you're here!" }],
   },
   {
     author: "marianne_b",
