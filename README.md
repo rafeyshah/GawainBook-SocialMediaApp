@@ -4,6 +4,8 @@
 
 <p align="center">
   <a href="https://gawainbook.onrender.com"><strong>Live demo</strong></a> ·
+  <a href="#how-the-spoiler-lock-works">How it works</a> ·
+  <a href="#screenshots">Screenshots</a> ·
   <a href="#getting-started">Run locally</a> ·
   <a href="#api-reference">API</a> ·
   <a href="#roadmap">Roadmap</a> ·
@@ -25,43 +27,63 @@
 
 ## About
 
-**GawainBook** is a social network for readers. Share what you're reading, post your thoughts and quotes, follow other readers and see what the people you trust are reading next.
+**GawainBook** is a home for reading circles: small groups reading the same book at their own pace. Every discussion belongs to a chapter, and **a discussion stays locked until you reach that chapter**: its title, its replies, search results and notifications included. So the reader on chapter 4 can talk freely with the reader on chapter 40, and neither spoils anything for the other.
 
-It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API backed by **PostgreSQL on Neon**, with photos in **Neon object storage**. It's deployed as a single service: the Express API also serves the React app, so the whole thing runs at one URL.
+Around that sit the things a reading community needs: shelves and chapter-by-chapter progress, invite links for private circles, organiser and moderator roles, reporting and blocking, and a feed for sharing what you're reading.
+
+It's a full-stack TypeScript app: a React frontend and an Express API backed by **PostgreSQL on Neon**, with photos in **Neon object storage**. It runs as a single service: the Express API also serves the React app, so the whole thing lives at one URL.
 
 > **Live demo:** https://gawainbook.onrender.com
 > Runs on Render's free plan, which sleeps after 15 minutes without visitors. The first load can take 30–60 seconds while it wakes up.
 
+## How the spoiler lock works
+
+One function decides who can see what ([`src/policy.ts`](Node-Rest-API/src/policy.ts)), and every route that returns discussion content goes through it. Lists apply the same rule in SQL (`chapter <= your progress`), so later chapters never leave the database.
+
+```mermaid
+flowchart LR
+    R([Reader opens a discussion]) --> V{Can see the circle?<br/>public, or a member}
+    V -- no --> H[404 Not found<br/><i>a private circle isn't revealed</i>]
+    V -- yes --> B{Blocked either way?}
+    B -- yes --> H
+    B -- no --> P{Reached its chapter?<br/>progress comes from the database}
+    P -- no --> L[Locked placeholder<br/><i>chapter number only:<br/>no title, author or text</i>]
+    P -- yes --> O[Open: title, text, replies]
+```
+
+The same check filters thread lists, single threads, replies, search and notifications. Move your progress back and later discussions lock again straight away. A [10-case test matrix](docs/plan/GawainBook_Launch_Plan.md#44-the-test-matrix-that-proves-the-core-promise) and a Playwright test in a real browser prove it.
+
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/circle.png" alt="A reading circle: members' progress along the book, open discussions and spoiler-locked ones" width="900">
-  <br><sub><b>A reading circle.</b> Everyone's place in the book on the right; discussions ahead of you stay locked until you get there.</sub>
+  <img src="docs/screenshots/circle.png" alt="A reading circle: members' progress along the book, open discussions, locked ones, and the organiser's tools" width="920">
+  <br><sub><b>A reading circle.</b> Who's where in the book, discussions up to your chapter, later ones locked. Organisers get invite links, members and reports beside it.</sub>
 </p>
 
-| Your circles | A chapter discussion |
+| Your circles | Notifications, filtered by the spoiler rule |
 | :---: | :---: |
-| <img src="docs/screenshots/circles-home.png" alt="Home screen: continue reading and your circles" width="440"> | <img src="docs/screenshots/discussion.png" alt="A chapter discussion with replies" width="440"> |
-| **Book page with chapter map** | **Your library and shelves** |
-| <img src="docs/screenshots/book.png" alt="Book page with chapter map and circles reading it" width="440"> | <img src="docs/screenshots/library.png" alt="Library grid of books" width="440"> |
-| **Profile with photo and cover** | **Dark mode** |
-| <img src="docs/screenshots/profile.png" alt="Reader profile with profile photo and cover image" width="440"> | <img src="docs/screenshots/circle-dark.png" alt="Circle page in dark mode" width="440"> |
-| **On your phone** | **Sign in** |
-| <img src="docs/screenshots/mobile-circle.png" alt="Circle page on a phone with tab navigation" width="300"> | <img src="docs/screenshots/sign-in.png" alt="Sign-in page" width="440"> |
+| <img src="docs/screenshots/circles-home.png" alt="Home: continue reading, your circles and circles to discover" width="440"> | <img src="docs/screenshots/notifications.png" alt="Notification panel showing a reply to your discussion" width="440"> |
+| **A chapter discussion** | **Book page with chapter map** |
+| <img src="docs/screenshots/discussion.png" alt="A chapter discussion with replies, edit, report and moderation actions" width="440"> | <img src="docs/screenshots/book.png" alt="Book page with a chapter map and the circles reading it" width="440"> |
+| **Profile and reading profile** | **Library: shelves and book search** |
+| <img src="docs/screenshots/profile.png" alt="Profile with avatar, reading profile (genres, language, pace) and posts" width="440"> | <img src="docs/screenshots/library.png" alt="Library with shelves and progress" width="440"> |
+| **Settings: password, data export, deletion** | **Dark mode** |
+| <img src="docs/screenshots/settings.png" alt="Settings page with email status, password change, data download and account deletion" width="440"> | <img src="docs/screenshots/circle-dark.png" alt="Circle page in dark mode" width="440"> |
+| **Sign-up with consent** | **On your phone** |
+| <img src="docs/screenshots/sign-up.png" alt="Create-account page with terms and age confirmation" width="440"> | <img src="docs/screenshots/mobile-circle.png" alt="Circle page on a phone" width="210"> <img src="docs/screenshots/mobile-discussion.png" alt="Discussion on a phone" width="210"> |
 
-<sub>Captured from the live demo with the sample readers.</sub>
+<sub>Captured from a throwaway copy of the app with the demo data (sample readers use CC0 avatars). Regenerate them with [`e2e/scripts/readme-screenshots.js`](e2e/scripts/readme-screenshots.js).</sub>
 
 ## Features
 
 **Accounts**
-- Forgotten password: reset by email (single-use, one-hour links); confirm your email from a link
-- Settings: change your password (needs the current one), download all your data, delete your account
-- Sign-up asks for the terms, privacy notice and minimum age (16); the accepted version is recorded
-- Sign up and sign in from a single page, with a smooth switch between the two
-- Clear inline errors (wrong password, email already registered, username taken)
-- Secure sessions: an httpOnly cookie (never readable by JavaScript), CSRF protection, server-side logout, and rate limits on sign-in
-- Sign-in emails are case- and whitespace-insensitive; password hashes never leave the server
-- Log out from the top bar
+- Sign up and sign in from a single page, with a smooth switch between the two and clear inline errors
+- Sign-up asks you to accept the terms and privacy notice and to confirm you're at least 16; the accepted terms version is recorded
+- Confirm your email from a link; a banner reminds you until you do
+- **Forgotten password:** reset by email with a single-use link that lasts one hour. The answer is the same whether or not an account exists, so nobody can find out who's signed up
+- **Settings:** change your password (needs the current one, signs out other devices), download all your data as JSON, delete your account
+- Secure sessions: an httpOnly cookie (never readable by JavaScript), CSRF protection, server-side logout, and rate limits on sign-in and password reset
+- Passwords of at least 8 characters, stored only as bcrypt hashes
 - Light and dark themes, remembered per browser
 - Full-width layout with a fixed sidebar and context panels (who's where, chapter map) on wide screens, and a tab bar on phones
 
@@ -79,7 +101,16 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 - Report a discussion or reply (spoiler, unkind, spam, other) to the circle's moderators, who see a review queue
 - Moderators hide content; members see a placeholder, moderators still see what was hidden
 - Block a reader: you stop seeing each other's discussions, replies, posts and notifications, and any follows end
+- Report a post or a profile; these go to the site's admins
+- **Admin area** (`/admin`): review reports, delete posts, suspend and unsuspend accounts. A suspended reader is signed out everywhere and hidden from everyone else
 - Rate limits on posting, per reader
+
+**Privacy and legal (Germany / GDPR)**
+- Terms of use, privacy notice and Impressum pages
+- No tracking or advertising cookies, so no cookie banner
+- Fonts are served from this site, not Google Fonts (which would send visitors' IP addresses to Google)
+- Book search goes through the server, so Open Library never learns who searched
+- How far you've read is only shown inside circles you share
 
 **Books and library**
 - Shelves: *Want to read*, *Reading*, *Finished*, with chapter-by-chapter progress (private to you)
@@ -112,8 +143,11 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 - [x] Reading circles with chapter progress and spoiler-safe discussions
 - [x] Invite links, roles, search, reporting, blocking, moderation and notifications (Phase 1)
 - [x] End-to-end test of the whole circle journey in a real browser (Playwright)
-- [ ] A spoiler-aware reading assistant for public-domain books
 - [x] Password reset, email confirmation, data export, account deletion, terms, site-wide reports and an admin area ([launch readiness](docs/launch-readiness.md))
+- [ ] Email sending switched on in production (needs a Resend account and a verified domain)
+- [ ] Error tracking and uptime monitoring
+- [ ] Reading reminders by email
+- [ ] A spoiler-aware reading assistant for public-domain books (Phase 2)
 
 ## Tech stack
 
@@ -123,8 +157,52 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 | Backend | Node.js 22, Express 4, **TypeScript**, bcrypt, Helmet, Multer |
 | Database | **PostgreSQL on Neon**, **Drizzle ORM** + SQL migrations, node-postgres |
 | File storage | **Neon object storage** (S3-compatible, private bucket, presigned URLs) |
+| Email | [Resend](https://resend.com) for account emails (written to the server log when no key is set) |
 | Testing | Jest, Supertest, React Testing Library, Playwright, a real embedded PostgreSQL for backend and end-to-end tests |
 | Hosting | Render (single web service, auto-deploys on every push to `master`) |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Browser
+      UI[React app<br/>React Router, Axios]
+    end
+    subgraph Render["Render: one web service"]
+      API[Express API<br/>TypeScript]
+      POL[[policy.ts<br/>spoiler + access rules]]
+      API --- POL
+    end
+    UI -- "/api, session cookie + CSRF header" --> API
+    API -- "Drizzle ORM, SQL migrations" --> DB[(Neon Postgres)]
+    API -- "S3 API, signed links" --> S3[(Neon object storage<br/>photos)]
+    API -- "book search, cached" --> OL[Open Library]
+    API -- "account emails" --> MAIL[Resend]
+```
+
+- **One service, one URL.** Express serves both `/api` and the built React app, so there's no CORS and cookies stay first-party.
+- **Database first.** Constraints (unique usernames, valid roles, chapter ranges, one open report per reader) live in Postgres, and every migration is a committed SQL file applied on startup.
+- **Photos never touch the server disk.** They go to a private bucket and are served through short-lived signed links, so they survive redeploys.
+- **Third parties never see who's reading.** Book search is proxied and cached by the server; fonts are self-hosted.
+
+The reasoning behind each choice is in the [decision log](docs/decisions/README.md).
+
+## Security and privacy
+
+| Area | How it's handled |
+| --- | --- |
+| Sessions | Random token in an `httpOnly`, `Secure`, `SameSite=Lax` cookie; only its SHA-256 hash is stored. Server-side logout; 30-day expiry |
+| CSRF | Double-submit token required on every state-changing request |
+| Passwords | bcrypt, at least 8 characters; changing or resetting signs out other devices; changing needs the current password |
+| Reset and confirmation links | 256-bit random, stored hashed, single use, short-lived (1 h / 48 h), only the newest works, built from `APP_URL` (not the request's Host header) |
+| Account discovery | Sign-in and "forgot password" give the same answer whether or not an account exists; sign-in also takes about the same time either way |
+| Abuse | Rate limits on sign-in, sign-up, password reset, uploads and posting; reporting, blocking, moderator hiding, admin suspension |
+| Authorization | The user always comes from the session, never the request body; access rules live in one module and are tested per route |
+| Uploads | Type and size checked; stored under a server-chosen key; only known keys can be served |
+| Headers | Helmet with a strict Content-Security-Policy (images only from this site, the photo bucket and Open Library covers) |
+| GDPR | Terms and privacy consent with version recorded; minimum age 16; data export and self-service deletion; no tracking cookies; no Google Fonts |
+
+Found a security problem? Please don't open a public issue: email the address in the [Impressum](https://gawainbook.onrender.com/impressum).
 
 ## Project structure
 
@@ -137,12 +215,12 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 │   │   ├── storage.ts        Neon object storage (or local disk as a fallback)
 │   │   ├── app.ts            Express app: security headers, uploads, images, routes
 │   │   ├── index.ts          Entry point: env, migrations, server
-│   │   └── scripts/          One-off MongoDB → Postgres migration
+│   │   └── scripts/          Demo data, admin rights, e2e server, MongoDB → Postgres migration
 │   ├── drizzle/              SQL migrations (generated by drizzle-kit, committed)
 │   ├── public/images/        Bundled default images (avatars, placeholders)
 │   └── tests/                API, database, storage and migration tests
 ├── react-frontend/           React app (Create React App)
-├── e2e/                      Playwright end-to-end test of the circle journey
+├── e2e/                      Playwright end-to-end tests (circle journey, accounts, moderation)
 ├── docs/                     Banner, screenshots, decision log, launch plan, book sources
 ├── neon.ts                   Neon infrastructure as code (Postgres + "assets" bucket)
 ├── package.json              Root scripts: build, start, test
@@ -193,7 +271,9 @@ npm run build     # builds the React app and the TypeScript API
 npm start         # http://localhost:8800 (runs migrations on startup)
 ```
 
-Check http://localhost:8800/api/health. It should return `{"db":"connected","error":null,"storage":"neon"}`.
+Check http://localhost:8800/api/health. It should return something like `{"db":"connected","error":null,"storage":"neon","email":"log","apiVersion":5}`.
+
+`"email":"log"` means no Resend key is set: password-reset and confirmation emails are printed in the API's console instead of being sent, so you can copy the link from there.
 
 For frontend development with live reload, run the API as above, then in a second terminal:
 
@@ -203,6 +283,18 @@ npx -p node@16 node node_modules/react-scripts/bin/react-scripts.js start
 ```
 
 Open http://localhost:3000. The dev server forwards `/api` requests to the API on port 8800.
+
+### Demo data and admin rights
+
+```bash
+cd Node-Rest-API
+npm run seed:demo -- --member=<your username>   # sample books, readers and circles (and add you to them)
+npm run seed:demo -- --remove                   # delete all demo data again
+npm run admin -- --grant=<your username>        # site-wide moderation at /admin
+npm run admin -- --list
+```
+
+These use the database in `.env.local`, which is your **production** database if that's where it points.
 
 ### Changing the database schema
 
