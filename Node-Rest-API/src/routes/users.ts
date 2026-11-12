@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { follows, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
@@ -100,12 +100,9 @@ router.put(
         throw new HttpError(400, "That text is too long (max 200 characters).");
       }
     }
-    let passwordChanged = false;
+    // Password changes need the current password: PUT /api/account/password.
     if (req.body.password !== undefined) {
-      const pw = String(req.body.password);
-      if (pw.length < 6 || pw.length > 72) throw new HttpError(400, "Password must be 6–72 characters.");
-      update.passwordHash = await bcrypt.hash(pw, 10);
-      passwordChanged = true;
+      throw new HttpError(400, "To change your password, use Settings: it asks for your current password.");
     }
 
     const db = getDb();
@@ -115,20 +112,16 @@ router.put(
       .where(eq(users.id, me.id))
       .returning();
     if (!user) throw notFound();
-    // A new password signs out every other device.
-    if (passwordChanged) await endAllSessions(me.id);
     res.json(await publicProfile(db, user));
   })
 );
 
+// Deleting your account: DELETE /api/account (needs your password).
 router.delete(
   "/:id",
   handle(async (req, res) => {
     ownAccountOnly(req.params.id, req.user!.id, "delete");
-    await endSession(req, res);
-    // Sessions, follows, posts and likes are removed by ON DELETE CASCADE.
-    await getDb().delete(users).where(eq(users.id, req.user!.id));
-    res.json({ message: "Account deleted." });
+    res.status(400).json({ error: "To delete your account, use Settings: it asks for your password." });
   })
 );
 
@@ -143,8 +136,9 @@ router.get(
     else if (typeof username === "string" && username) {
       [user] = await db.select().from(users).where(eq(users.username, username));
     }
-    if (!user) throw notFound();
-    res.json(await publicProfile(db, user));
+    // Suspended accounts disappear for everyone but admins.
+    if (!user || (user.suspendedAt && !req.user!.isAdmin)) throw notFound();
+    res.json({ ...(await publicProfile(db, user)), ...(req.user!.isAdmin ? { suspended: Boolean(user.suspendedAt) } : {}) });
   })
 );
 
@@ -158,7 +152,7 @@ router.get(
       .select({ _id: users.id, username: users.username, profilePicture: users.profilePicture })
       .from(follows)
       .innerJoin(users, eq(users.id, follows.followingId))
-      .where(eq(follows.followerId, user.id))
+      .where(and(eq(follows.followerId, user.id), isNull(users.suspendedAt)))
       .orderBy(users.username);
     res.json(rows);
   })

@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from "../legal";
 import bcrypt from "bcryptjs";
 import { and, eq, inArray, like } from "drizzle-orm";
 import type { Db } from "../db/client";
@@ -14,6 +15,9 @@ import {
   SeedUser,
   SOURCE_NOTE,
 } from "./data";
+
+// Sample accounts count as verified and as having accepted the current terms.
+const sampleConsent = () => ({ emailVerifiedAt: new Date(), termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION });
 
 export const sampleEmail = (username: string) => `${username}@${SAMPLE_EMAIL_DOMAIN}`;
 const hoursAgo = (h: number, now: Date) => new Date(now.getTime() - h * 3600_000);
@@ -74,7 +78,7 @@ export async function seedDemo(
       const [row] = existing
         ? await tx
             .update(users)
-            .set({ passwordHash, bio: SAMPLE_BIO, city: u.city ?? null, profilePicture: u.photo ?? "" })
+            .set({ passwordHash, bio: SAMPLE_BIO, city: u.city ?? null, profilePicture: u.photo ?? "", ...sampleConsent() })
             .where(eq(users.id, existing.id))
             .returning()
         : await tx
@@ -86,6 +90,7 @@ export async function seedDemo(
               bio: SAMPLE_BIO,
               city: u.city ?? null,
               profilePicture: u.photo ?? "",
+              ...sampleConsent(),
             })
             .returning();
       userId.set(u.username, row.id);

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import axios from "axios";
 import Sidebar from "./Sidebar";
 import { renderWithAuth, ME, networkError } from "../../testUtils";
@@ -51,4 +51,17 @@ test("shows a message if the list can't load", async () => {
   axios.get.mockRejectedValue(networkError());
   renderWithAuth(<Sidebar />);
   expect(await screen.findByText(/Couldn't load who you follow/)).toBeInTheDocument();
+});
+
+
+test("links to Settings; Admin only for admins", async () => {
+  axios.get.mockResolvedValue({ data: [] });
+  const { unmount } = renderWithAuth(<Sidebar />);
+  await act(async () => {});
+  expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+  expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
+  unmount();
+  renderWithAuth(<Sidebar />, { user: { ...ME, isAdmin: true } });
+  await act(async () => {});
+  expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin");
 });

@@ -54,6 +54,9 @@ It's a full-stack TypeScript/JavaScript app: a React frontend and an Express API
 ## Features
 
 **Accounts**
+- Forgotten password: reset by email (single-use, one-hour links); confirm your email from a link
+- Settings: change your password (needs the current one), download all your data, delete your account
+- Sign-up asks for the terms, privacy notice and minimum age (16); the accepted version is recorded
 - Sign up and sign in from a single page, with a smooth switch between the two
 - Clear inline errors (wrong password, email already registered, username taken)
 - Secure sessions: an httpOnly cookie (never readable by JavaScript), CSRF protection, server-side logout, and rate limits on sign-in
@@ -110,7 +113,7 @@ The full plan is in [`docs/plan/GawainBook_Launch_Plan.md`](docs/plan/GawainBook
 - [x] Invite links, roles, search, reporting, blocking, moderation and notifications (Phase 1)
 - [x] End-to-end test of the whole circle journey in a real browser (Playwright)
 - [ ] A spoiler-aware reading assistant for public-domain books
-- [ ] Password reset by email
+- [x] Password reset, email confirmation, data export, account deletion, terms, site-wide reports and an admin area ([launch readiness](docs/launch-readiness.md))
 
 ## Tech stack
 
@@ -225,9 +228,17 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 | `POST` | `/auth/login` | Sign in: `{ email, password }` (sets the session cookie) |
 | `POST` | `/auth/logout` | End the session |
 | `GET` | `/auth/me` | The signed-in account (401 if signed out) |
+| `POST` | `/auth/forgot-password` | `{ email }`: emails a reset link if the account exists (same answer either way) |
+| `POST` | `/auth/reset-password` | `{ token, password }`: sets the new password, signs out everywhere, signs you in |
+| `POST` | `/auth/verify-email` | `{ token }`: confirms your email (works signed out) |
+| `POST` | `/auth/resend-verification` | Sends a new confirmation link |
+| `PUT` | `/account/password` | `{ currentPassword, newPassword }` |
+| `GET` | `/account/export` | Everything stored about you, as a JSON download |
+| `DELETE` | `/account` | `{ password }`: deletes your account |
+| `GET` | `/admin/stats`, `/admin/reports` | Admins: numbers and open reports about posts and profiles |
+| `POST` / `DELETE` | `/admin/users/:id/suspend`, `/admin/users/:id/unsuspend`, `/admin/posts/:id`, `/admin/reports/:id/dismiss` | Admins: suspend, unsuspend, delete a post, dismiss a report |
 | `GET` | `/users?username=` or `/users?userId=` | Get a user |
-| `PUT` | `/users/:id` | Update your profile: `desc`, `city`, `from`, `relationship`, `profilePicture`, `coverPicture`, `favoriteGenres`, `readingLanguage`, `pace`, `password` |
-| `DELETE` | `/users/:id` | Delete your account (posts, likes and follows go with it) |
+| `PUT` | `/users/:id` | Update your profile: `desc`, `city`, `from`, `relationship`, `profilePicture`, `coverPicture`, `favoriteGenres`, `readingLanguage`, `pace` (password: see `/account/password`) |
 | `GET` | `/users/friends/:userId` | List the people a user follows |
 | `PUT` | `/users/:id/follow` | Follow a user |
 | `PUT` | `/users/:id/unfollow` | Unfollow a user |
@@ -260,7 +271,7 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 | `POST` | `/threads/:id/comments` | Reply `{ body }` |
 | `PATCH` / `DELETE` | `/comments/:id` | Edit your reply `{ body }` / delete it (moderators: any reply) |
 | `POST` | `/threads/:id/hide`, `/threads/:id/unhide`, `/comments/:id/hide`, `/comments/:id/unhide` | Moderators: hide or show content |
-| `POST` | `/reports` | Report `{ targetType: "thread" \| "comment", targetId, reason, details? }` |
+| `POST` | `/reports` | Report `{ targetType: "thread" \| "comment" \| "post" \| "user", targetId, reason, details? }` (posts and profiles go to admins) |
 | `POST` | `/reports/:id/dismiss` | Moderators: dismiss a report |
 | `GET` / `PUT` / `DELETE` | `/blocks`, `/blocks/:userId` | Your blocked readers / block / unblock |
 | `GET` | `/notifications` | `{ unread, items }`, filtered by the spoiler rule when read |
@@ -284,7 +295,7 @@ npm run test:e2e          # Playwright: the whole circle journey in a real brows
 - **Frontend:** Jest and React Testing Library, with real-browser checks of key flows against the live site.
 - **End to end:** [Playwright](e2e/tests/circle-journey.spec.js) drives two readers through the core promise: sign up, join with an invite link, set chapter 4, see chapters 1–4, find chapter 9 locked (in the list, by direct link, through the API and in search), reply, and get notified. It runs against a throwaway server with its own temporary database (`npm run build` in both apps first). `npm run test:e2e:live` runs it against the live site and deletes its test accounts afterwards.
 
-Current totals: **538 backend tests**, **389 frontend tests** and the end-to-end journey, all passing.
+Current totals: **612 backend tests**, **438 frontend tests** and **3 end-to-end tests** (the circle journey; accounts and email; reporting and admin), all passing.
 
 ## Deployment
 
@@ -293,6 +304,7 @@ The app deploys to [Render](https://render.com) using [`render.yaml`](render.yam
 **One-time setup**
 1. In Render, choose **New → Blueprint** and select this repository.
 2. When prompted, paste the values from your `.env.local`: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_ENDPOINT_URL_S3`.
+   For account emails also set `RESEND_API_KEY` and `MAIL_FROM` (a sender on a domain verified in [Resend](https://resend.com)); without them, emails only go to the server log. See [launch readiness](docs/launch-readiness.md) for everything to do before opening up.
 3. After the deploy, open `/api/health` and check for `"db":"connected"` and `"storage":"neon"`.
 
 **Demo data (optional)**

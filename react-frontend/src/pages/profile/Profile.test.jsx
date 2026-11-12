@@ -184,3 +184,24 @@ test("blocking a reader from their profile hides their posts and Follow button",
   expect(within(h).getByText(/followers/)).toHaveTextContent("0 followers");
   window.confirm.mockRestore();
 });
+
+
+test("another reader's profile can be reported; your own can't", async () => {
+  mockGets(SAM);
+  axios.post.mockResolvedValueOnce({ data: { _id: "r1", status: "open" } });
+  renderProfile("sam");
+  const h = within(await header());
+  userEvent.click(h.getByRole("button", { name: "Report sam" }));
+  const form = screen.getByRole("form", { name: "Report this profile" });
+  userEvent.click(within(form).getByLabelText("Unkind or harassing"));
+  userEvent.click(within(form).getByRole("button", { name: "Send report" }));
+  expect(await h.findByRole("status")).toHaveTextContent("Reported. Thanks.");
+  expect(axios.post).toHaveBeenCalledWith("/reports", { targetType: "user", targetId: "u2", reason: "harassment", details: "" });
+});
+
+test("no Report button on your own profile", async () => {
+  mockGets({ ...ME, followers: [], followings: [] });
+  renderProfile(ME.username);
+  await header();
+  expect(screen.queryByRole("button", { name: /^Report / })).toBeNull();
+});

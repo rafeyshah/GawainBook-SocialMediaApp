@@ -14,6 +14,8 @@ async function signUp(page, who) {
   await page.getByLabel("Password", { exact: true }).fill(who.password);
   const again = page.getByLabel("Confirm password");
   if (await again.count()) await again.fill(who.password);
+  await page.getByLabel(/I accept the terms of use/).check();
+  await page.getByLabel(/at least 16 years old/).check();
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("link", { name: "Your profile" })).toBeVisible();
 }
@@ -36,13 +38,15 @@ async function startDiscussion(page, chapter, title) {
 }
 
 // Remove the test accounts afterwards (their circle and posts cascade).
+// Through the real Settings page, like a reader would.
 async function deleteAccount(page, who) {
-  await page.evaluate(async () => {
-    const me = await fetch("/api/auth/me", { credentials: "include" }).then((r) => r.json());
-    const csrf = document.cookie.match(/(?:^|; )gb_csrf=([^;]+)/)?.[1];
-    await fetch(`/api/users/${me._id}`, { method: "DELETE", credentials: "include", headers: { "X-CSRF-Token": decodeURIComponent(csrf || "") } });
-  });
-  void who;
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Delete my account…" }).click();
+  const form = page.getByRole("form", { name: "Delete account" });
+  await form.getByLabel(/Type your username/).fill(who.username);
+  await form.getByLabel("Your password").fill(who.password);
+  await form.getByRole("button", { name: "Delete forever" }).click();
+  await expect(page).toHaveURL(/\/login/);
 }
 
 test("two readers at different chapters: invite, spoiler lock, reply, notification", async ({ browser }) => {

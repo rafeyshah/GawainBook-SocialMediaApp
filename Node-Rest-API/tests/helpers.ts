@@ -5,6 +5,7 @@ import request from "supertest";
 import type { Response } from "supertest";
 import { createApp, Limit, LimitName } from "../src/app";
 import { OpenLibrary } from "../src/openLibrary";
+import { MemoryMailer } from "../src/mailer";
 import { DiskStorage } from "../src/storage";
 import { LegalConfig } from "../src/legal";
 
@@ -18,8 +19,12 @@ const unlimited: Limit = { windowMs: 60_000, max: 1_000_000 };
 export const offlineOpenLibrary = () =>
   new OpenLibrary({ fetch: async () => ({ ok: true, status: 200, json: async () => ({ docs: [] }) }) });
 
+// Every email the app sends in tests lands here.
+export const mailer = new MemoryMailer();
+
 export const makeApp = (limits: Partial<Record<LimitName, Limit>> = {}, openLibrary: OpenLibrary = offlineOpenLibrary()) =>
   createApp({
+    mailer,
     storage: new DiskStorage(UPLOAD_DIR),
     legal: () => legal,
     limits: { auth: unlimited, upload: unlimited, waitlist: unlimited, posting: unlimited, ...limits },
@@ -111,7 +116,7 @@ export interface TestUser {
 export async function signUp(overrides: Record<string, unknown> = {}): Promise<{ user: TestUser; client: Client }> {
   const n = ++counter; // captured before any await, so parallel sign-ups don't collide
   const client = await newClient();
-  const body = { username: `reader${n}`, email: `reader${n}@example.com`, password: "secret123", ...overrides };
+  const body = { username: `reader${n}`, email: `reader${n}@example.com`, password: "secret123", acceptTerms: true, confirmAge: true, ...overrides };
   const res = await client.post("/api/auth/register", body);
   if (res.status !== 201) throw new Error(`signUp failed: ${res.status} ${JSON.stringify(res.body)}`);
   return { user: res.body, client };
@@ -126,3 +131,6 @@ export async function createPost(client: Client, overrides: Record<string, unkno
 // Valid-looking ids that don't exist, in both supported formats.
 export const NONEXISTENT_ID = "64b000000000000000000000";
 export const NONEXISTENT_UUID = "00000000-0000-4000-8000-000000000000";
+
+// The fields a valid sign-up needs besides username, email and password.
+export const CONSENT = { acceptTerms: true, confirmAge: true };

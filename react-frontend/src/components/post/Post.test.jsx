@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axios from "axios";
 import Post, { likeLabel } from "./Post";
@@ -99,4 +99,38 @@ test("shows a placeholder name when the author can't be loaded", async () => {
   renderWithAuth(<Post post={makePost()} />);
   expect(await screen.findByText("Unknown reader")).toBeInTheDocument();
   expect(screen.queryByRole("link")).toBeNull();
+});
+
+
+describe("reporting a post", () => {
+  test("other readers' posts can be reported to the site's moderators", async () => {
+    axios.get.mockResolvedValue({ data: { _id: "u2", username: "sam" } });
+    axios.post.mockResolvedValueOnce({ data: { _id: "r1", status: "open" } });
+    const post = makePost({ _id: "p9", userId: "u2" });
+    renderWithAuth(<Post post={post} />);
+    userEvent.click(await screen.findByRole("button", { name: "Report post by sam" }));
+    const form = screen.getByRole("form", { name: "Report this post" });
+    expect(form).toHaveTextContent("GawainBook's moderators review reports");
+    userEvent.click(within(form).getByLabelText("Spam or advertising"));
+    userEvent.click(within(form).getByRole("button", { name: "Send report" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Reported. Thanks.");
+    expect(axios.post).toHaveBeenCalledWith("/reports", { targetType: "post", targetId: "p9", reason: "spam", details: "" });
+    expect(screen.queryByRole("button", { name: /Report post/ })).toBeNull();
+  });
+
+  test("your own posts have no Report button", async () => {
+    axios.get.mockResolvedValue({ data: { _id: ME._id, username: ME.username } });
+    renderWithAuth(<Post post={makePost({ userId: ME._id })} />);
+    await screen.findByText(ME.username);
+    expect(screen.queryByRole("button", { name: /Report post/ })).toBeNull();
+  });
+
+  test("Cancel closes the form", async () => {
+    axios.get.mockResolvedValue({ data: { _id: "u2", username: "sam" } });
+    renderWithAuth(<Post post={makePost({ userId: "u2" })} />);
+    userEvent.click(await screen.findByRole("button", { name: "Report post by sam" }));
+    userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("form", { name: "Report this post" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Report post by sam" })).toBeInTheDocument();
+  });
 });

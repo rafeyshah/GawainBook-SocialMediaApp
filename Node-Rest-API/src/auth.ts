@@ -92,6 +92,10 @@ export const requireAuth: RequestHandler = (req, res, next) => {
         res.status(401).json({ error: "Please sign in to continue." });
         return;
       }
+      if (user.suspendedAt) {
+        res.status(403).json({ error: "This account has been suspended." });
+        return;
+      }
       req.user = user;
       next();
     })

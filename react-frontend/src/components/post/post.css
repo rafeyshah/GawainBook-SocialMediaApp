@@ -117,3 +117,7 @@ a.postAuthor:focus-visible {
   font-size: 13px;
   color: var(--danger);
 }
+
+.postReport {
+  margin-left: auto;
+}

@@ -1,0 +1,16 @@
+# Public pages may be indexed; everything behind sign-in and every
+# one-time link (password reset, email confirmation, invites) may not.
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /register
+Allow: /waitlist
+Allow: /terms
+Allow: /privacy
+Allow: /impressum
+Disallow: /api/
+Disallow: /join/
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /

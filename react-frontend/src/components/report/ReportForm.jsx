@@ -9,7 +9,10 @@ export const REASONS = [
   ["other", "Something else"],
 ];
 
-// Report a discussion or reply to the circle's moderators.
+const NOUN = { thread: "discussion", comment: "reply", post: "post", user: "profile" };
+
+// Report a discussion or reply (to the circle's moderators), or a post or
+// profile (to the site's admins).
 export default function ReportForm({ targetType, targetId, onDone, onCancel }) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
@@ -30,7 +33,7 @@ export default function ReportForm({ targetType, targetId, onDone, onCancel }) {
   };
 
   return (
-    <form className="reportForm" onSubmit={submit} aria-label={`Report this ${targetType === "thread" ? "discussion" : "reply"}`}>
+    <form className="reportForm" onSubmit={submit} aria-label={`Report this ${NOUN[targetType] || "item"}`}>
       <fieldset>
         <legend>What's wrong?</legend>
         {REASONS.map(([value, label]) => (
@@ -44,7 +47,11 @@ export default function ReportForm({ targetType, targetId, onDone, onCancel }) {
         Anything the moderators should know? (optional)
         <textarea className="input" rows={2} maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)} />
       </label>
-      <p className="sourceNote">Only the circle's organiser and moderators see reports. The writer isn't told who reported them.</p>
+      <p className="sourceNote">
+        {targetType === "post" || targetType === "user"
+          ? "GawainBook's moderators review reports about posts and profiles. The reader isn't told who reported them."
+          : "Only the circle's organiser and moderators see reports. The writer isn't told who reported them."}
+      </p>
       {error && (
         <div className="errorBox" role="alert">
           {error}

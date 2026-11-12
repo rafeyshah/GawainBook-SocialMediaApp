@@ -20,6 +20,9 @@ import { legalRouter, waitlistRouter } from "./routes/waitlist";
 import bookRoute from "./routes/books";
 import { circleRouter } from "./routes/circles";
 import { safetyRouter } from "./routes/safety";
+import { accountRouter } from "./routes/account";
+import { adminRouter } from "./routes/admin";
+import { createMailer, Mailer } from "./mailer";
 import { bookSearchRouter } from "./routes/books";
 import { OpenLibrary, COVER_IMAGE_ORIGINS } from "./openLibrary";
 
@@ -47,6 +50,7 @@ export interface AppOptions {
   legal?: () => LegalConfig;
   limits?: Partial<Record<LimitName, Limit>>;
   openLibrary?: OpenLibrary;
+  mailer?: Mailer;
 }
 
 export type LimitName = "auth" | "upload" | "waitlist" | "posting";
@@ -84,6 +88,7 @@ export function createApp(options: AppOptions = {}) {
     posting: limiter(limits.posting, "You're posting very quickly. Please wait a few minutes and try again.", true),
   };
   const openLibrary = options.openLibrary ?? new OpenLibrary();
+  const mailer = options.mailer ?? createMailer();
 
   const app = express();
   // Render terminates HTTPS in front of the app: trust one proxy hop so
@@ -157,11 +162,13 @@ export function createApp(options: AppOptions = {}) {
     "/api/health",
     handle(async (req, res) => {
       const status = await dbStatus();
-      res.status(status.db === "connected" ? 200 : 503).json({ ...status, storage: storage.kind, apiVersion: API_VERSION });
+      res.status(status.db === "connected" ? 200 : 503).json({ ...status, storage: storage.kind, email: mailer.kind, apiVersion: API_VERSION });
     })
   );
 
-  app.use("/api/auth", authRouter(limit));
+  app.use("/api/auth", authRouter(limit, mailer));
+  app.use("/api", accountRouter(mailer, limit.auth));
+  app.use("/api", adminRouter());
   app.use("/api/users", userRoute);
   app.use("/api/posts", postRoute);
   app.use("/api", bookSearchRouter(openLibrary));

@@ -16,7 +16,10 @@ export interface LegalConfig {
   waitlistOpen: boolean;
 }
 
-export const DEFAULT_PRIVACY_VERSION = "2026-11-10";
+export const DEFAULT_PRIVACY_VERSION = "2026-11-12";
+// Bump when the terms change; stored with each account's acceptance.
+export const TERMS_VERSION = "2026-11-12";
+export const MINIMUM_AGE = 16;
 
 export function legalConfig(env: NodeJS.ProcessEnv = process.env): LegalConfig {
   const name = (env.LEGAL_NAME || "").trim();

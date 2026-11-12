@@ -8,7 +8,10 @@ import Library from "./pages/books/Library";
 import Auth from "./pages/auth/Auth";
 import Profile from "./pages/profile/Profile";
 import Waitlist from "./pages/public/Waitlist";
-import { Impressum, Privacy } from "./pages/public/Legal";
+import { Impressum, Privacy, Terms } from "./pages/public/Legal";
+import { ForgotPassword, ResetPassword, VerifyEmail } from "./pages/account/AccountPages";
+import Settings from "./pages/account/Settings";
+import Admin from "./pages/account/Admin";
 import VersionBanner from "./components/versionBanner/VersionBanner";
 import { BrowserRouter as Router, Switch, Route, Redirect } from "react-router-dom";
 import { useContext } from "react";
@@ -53,6 +56,13 @@ function App() {
         <Route path="/impressum">
           <Impressum />
         </Route>
+        <Route path="/terms">
+          <Terms />
+        </Route>
+        {/* Email links work signed in or out. */}
+        <Route path="/verify-email">{checking ? <Splash /> : <VerifyEmail />}</Route>
+        <Route path="/reset-password">{checking ? <Splash /> : <ResetPassword />}</Route>
+        <Route path="/forgot-password">{guestOnly(<ForgotPassword />)}</Route>
         <Route exact path="/">
           {signedIn(<CirclesHome />)}
         </Route>
@@ -65,6 +75,8 @@ function App() {
         <Route path="/login">{guestOnly(<Auth mode="login" />)}</Route>
         <Route path="/register">{guestOnly(<Auth mode="register" />)}</Route>
         <Route path="/profile/:username">{signedIn(<Profile />)}</Route>
+        <Route path="/settings">{signedIn(<Settings />)}</Route>
+        <Route path="/admin">{signedIn(<Admin />)}</Route>
         <Redirect to="/" />
       </Switch>
     </Router>

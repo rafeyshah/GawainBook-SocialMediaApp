@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from "../src/legal";
 import { eq } from "drizzle-orm";
 import { getDb } from "../src/db/client";
 import { books, circleMembers, circles, comments, follows, threads, users } from "../src/db/schema";
@@ -31,7 +32,7 @@ describe("demo data is realistic and safe", () => {
     expect(new Set(codes).size).toBe(codes.length);
   });
 
-  test("every sample reader has a distinct bundled photo that exists on disk", () => {
+  test("every sample reader has a distinct bundled CC0 avatar that exists on disk", () => {
     const fs = require("fs") as typeof import("fs");
     const path = require("path") as typeof import("path");
     const { PICTURE_KEY } = require("../src/routes/users") as typeof import("../src/routes/users");
@@ -40,6 +41,8 @@ describe("demo data is realistic and safe", () => {
     expect(new Set(photos).size).toBe(photos.length);
     for (const p of photos) {
       expect(PICTURE_KEY.test(p!)).toBe(true);
+      // Only the generated CC0 avatars, never the template photos of unknown licence.
+      expect(p).toMatch(/^person\/sample-[\w-]+\.png$/);
       expect(fs.existsSync(path.join(__dirname, "../public/images", p!))).toBe(true);
     }
   });
@@ -96,7 +99,11 @@ describe("seedDemo / removeDemo", () => {
     const [u] = await getDb().select().from(users).where(eq(users.username, "elinor_reads"));
     expect(u.email).toBe(`elinor_reads@${SAMPLE_EMAIL_DOMAIN}`);
     expect(u.bio).toMatch(/Sample reader/);
-    expect(u.profilePicture).toBe("person/8.jpeg");
+    expect(u.profilePicture).toBe("person/sample-elinor_reads.png");
+    // Sample accounts are verified and have accepted the current terms.
+    expect(u.emailVerifiedAt).not.toBeNull();
+    expect(u.termsAcceptedAt).not.toBeNull();
+    expect(u.termsVersion).toBe(TERMS_VERSION);
     const c = await newClient();
     expect((await c.post("/api/auth/login", { email: sampleEmail("elinor_reads"), password: "sample-pass-1" })).status).toBe(200);
   });

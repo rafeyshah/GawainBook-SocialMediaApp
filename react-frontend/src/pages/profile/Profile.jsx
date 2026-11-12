@@ -10,6 +10,7 @@ import { errorMessage } from "../../apiCalls";
 import BookCover from "../../components/book/BookCover";
 import PhotoEditor from "../../components/photoEditor/PhotoEditor";
 import ReadingProfile, { BlockButton, BlockedReaders } from "../../components/readingProfile/ReadingProfile";
+import ReportForm from "../../components/report/ReportForm";
 import "../reading/reading.css";
 import "./profile.css";
 
@@ -120,6 +121,8 @@ export default function Profile() {
   const [status, setStatus] = useState("loading"); // loading | ready | notfound | error
   const [message, setMessage] = useState("");
   const [blocked, setBlocked] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,6 +246,16 @@ export default function Profile() {
             </div>
             {!isMe && !blocked && (
               <div className="itemActions">
+                {!reported && !reporting && (
+                  <button type="button" className="linkBtn" onClick={() => setReporting(true)}>
+                    Report {profile.username}
+                  </button>
+                )}
+                {reported && (
+                  <span className="memberMeta" role="status">
+                    Reported. Thanks.
+                  </span>
+                )}
                 <BlockButton
                   profile={profile}
                   onBlocked={() => {
@@ -252,6 +265,17 @@ export default function Profile() {
                   }}
                 />
               </div>
+            )}
+            {reporting && (
+              <ReportForm
+                targetType="user"
+                targetId={profile._id}
+                onCancel={() => setReporting(false)}
+                onDone={() => {
+                  setReporting(false);
+                  setReported(true);
+                }}
+              />
             )}
           </div>
         </section>

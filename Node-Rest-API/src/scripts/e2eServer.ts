@@ -12,7 +12,11 @@ import os from "os";
 import path from "path";
 import net from "net";
 import { closeDb, getDb, initDb, runMigrations } from "../db/client";
+import express from "express";
+import { eq } from "drizzle-orm";
 import { createApp } from "../app";
+import { MemoryMailer } from "../mailer";
+import { users } from "../db/schema";
 import { DiskStorage } from "../storage";
 import { seedDemo } from "../seed/seed";
 
@@ -52,7 +56,22 @@ async function main() {
   console.log(`e2e: seeded ${seeded.books} books and ${seeded.circles} circles`);
 
   const port = Number(process.env.E2E_PORT) || 8899;
-  const app = createApp({ storage: new DiskStorage(path.join(dir, "uploads")) });
+  // Emails are kept in memory so tests can open the links. These /__e2e
+  // routes exist only in this throwaway server, never in the real app.
+  const mailer = new MemoryMailer();
+  const app = express();
+  app.get("/__e2e/last-email", (req, res) => {
+    const email = mailer.last(String(req.query.to || ""));
+    res.json(email ? { subject: email.subject, link: mailer.linkIn(email) } : null);
+  });
+  app.post("/__e2e/make-admin/:username", async (req, res) => {
+    await getDb().update(users).set({ isAdmin: true }).where(eq(users.username, req.params.username));
+    res.json({ ok: true });
+  });
+  // Every test signs up and in from one address, so the brute-force limit
+  // (tested on its own in tests/auth.test.ts) is raised here.
+  const relaxed = { windowMs: 60_000, max: 1000 };
+  app.use(createApp({ storage: new DiskStorage(path.join(dir, "uploads")), mailer, limits: { auth: relaxed, posting: relaxed } }));
   const server = app.listen(port, () => console.log(`e2e: GawainBook on http://localhost:${port}`));
 
   let stopping = false;

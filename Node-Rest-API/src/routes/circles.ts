@@ -10,6 +10,7 @@ import {
   comments,
   invitations,
   notifications,
+  posts,
   reports,
   threads,
   userBooks,
@@ -761,9 +762,32 @@ export function circleRouter(limitPosting: RequestHandler = pass) {
       const { targetType, targetId } = req.body;
       const reason = req.body.reason;
       const details = String(req.body.details ?? "").trim();
-      if (!["thread", "comment"].includes(targetType)) throw new HttpError(400, "You can report a discussion or a reply.");
+      if (!["thread", "comment", "post", "user"].includes(targetType)) throw new HttpError(400, "You can report a discussion, a reply, a post or a profile.");
       if (!["spoiler", "harassment", "spam", "other"].includes(reason)) throw new HttpError(400, "Choose a reason.");
       if (details.length > 500) throw new HttpError(400, "Details can be at most 500 characters.");
+      // Posts and profiles live outside circles: their reports go to the site's admins.
+      if (targetType === "post" || targetType === "user") {
+        if (!isId(targetId)) throw new HttpError(404, targetType === "post" ? "Post not found." : "User not found.");
+        const db = getDb();
+        let authorId: string | undefined;
+        if (targetType === "post") {
+          const [p] = await db.select({ userId: posts.userId }).from(posts).where(eq(posts.id, targetId));
+          authorId = p?.userId;
+        } else {
+          const [u] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, targetId), isNull(users.suspendedAt)));
+          authorId = u?.id;
+        }
+        if (!authorId || (await blockedIds(me)).has(authorId)) throw new HttpError(404, targetType === "post" ? "Post not found." : "User not found.");
+        if (authorId === me) throw new HttpError(400, "You can't report yourself.");
+        const [r] = await db
+          .insert(reports)
+          .values({ reporterId: me, circleId: null, targetType, targetId, reason, details })
+          .onConflictDoNothing()
+          .returning({ id: reports.id });
+        if (!r) throw new HttpError(409, "You've already reported this. We'll take a look.");
+        res.status(201).json({ _id: r.id, status: "open" });
+        return;
+      }
       // You can only report what you can read.
       const found = await findTarget(targetType, targetId, me, res);
       if (!found) return;
@@ -829,7 +853,8 @@ export function circleRouter(limitPosting: RequestHandler = pass) {
       if (!isId(req.params.id)) throw new HttpError(404, "Report not found.");
       const db = getDb();
       const [r] = await db.select().from(reports).where(eq(reports.id, req.params.id));
-      if (!r) throw new HttpError(404, "Report not found.");
+      // Site-wide reports are handled by admins (see routes/admin.ts).
+      if (!r || !r.circleId) throw new HttpError(404, "Report not found.");
       await moderatedCircle(r.circleId, req.user!.id);
       if (r.status !== "open") throw new HttpError(409, "This report has already been handled.");
       await db.update(reports).set({ status: "dismissed", resolvedBy: req.user!.id, resolvedAt: new Date() }).where(eq(reports.id, r.id));

@@ -38,3 +38,13 @@ services:
         sync: false
       - key: WAITLIST_OPEN
         value: "false"
+      # Links in emails (password reset, email confirmation) point here.
+      - key: APP_URL
+        value: https://gawainbook.onrender.com
+      # Account emails via Resend (https://resend.com). Without a key, emails
+      # are only written to the server log. MAIL_FROM must use a domain you've
+      # verified in Resend, e.g. "GawainBook <hello@yourdomain.com>".
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false

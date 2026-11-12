@@ -21,6 +21,8 @@ function Collapse({ open, children }) {
 }
 
 const EMPTY = { username: "", email: "", password: "", passwordAgain: "" };
+export const MIN_PASSWORD = 8;
+export const MIN_AGE = 16;
 
 // One page for both "Sign in" and "Create account"; the URL decides the mode.
 export default function Auth({ mode }) {
@@ -29,6 +31,8 @@ export default function Auth({ mode }) {
   const [form, setForm] = useState(EMPTY);
   const [localError, setLocalError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [confirmAge, setConfirmAge] = useState(false);
 
   // Clear messages and passwords when switching between the two modes.
   useEffect(() => {
@@ -51,8 +55,16 @@ export default function Auth({ mode }) {
         setLocalError("Passwords don't match.");
         return;
       }
+      if (!acceptTerms) {
+        setLocalError("Please accept the terms and privacy notice to create an account.");
+        return;
+      }
+      if (!confirmAge) {
+        setLocalError(`You need to be at least ${MIN_AGE} to use GawainBook.`);
+        return;
+      }
       registerCall(
-        { username: form.username.trim(), email: form.email.trim(), password: form.password },
+        { username: form.username.trim(), email: form.email.trim(), password: form.password, acceptTerms, confirmAge },
         dispatch
       );
     } else {
@@ -143,14 +155,14 @@ export default function Auth({ mode }) {
               value={form.password}
               onChange={update}
               required
-              minLength={6}
+              minLength={isSignup ? MIN_PASSWORD : undefined}
               autoComplete={isSignup ? "new-password" : "current-password"}
               aria-describedby={isSignup ? "passwordHint" : undefined}
               className="authInput"
             />
             <Collapse open={isSignup}>
               <span id="passwordHint" className="authHint">
-                At least 6 characters.
+                At least {MIN_PASSWORD} characters. A short phrase is easier to remember than a jumble.
               </span>
             </Collapse>
           </div>
@@ -166,10 +178,41 @@ export default function Auth({ mode }) {
                 onChange={update}
                 required
                 disabled={!isSignup}
-                minLength={6}
+                minLength={MIN_PASSWORD}
                 autoComplete="new-password"
                 className="authInput"
               />
+            </div>
+          </Collapse>
+
+          <Collapse open={isSignup}>
+            <div className="authChecks">
+              <label className="authCheck">
+                <input type="checkbox" checked={acceptTerms} disabled={!isSignup} onChange={(e) => setAcceptTerms(e.target.checked)} />
+                <span>
+                  I accept the{" "}
+                  <Link to="/terms" target="_blank" rel="noopener">
+                    terms of use
+                  </Link>{" "}
+                  and have read the{" "}
+                  <Link to="/privacy" target="_blank" rel="noopener">
+                    privacy notice
+                  </Link>
+                  .
+                </span>
+              </label>
+              <label className="authCheck">
+                <input type="checkbox" checked={confirmAge} disabled={!isSignup} onChange={(e) => setConfirmAge(e.target.checked)} />
+                <span>I'm at least {MIN_AGE} years old.</span>
+              </label>
+            </div>
+          </Collapse>
+
+          <Collapse open={!isSignup}>
+            <div className="authForgot">
+              <Link to="/forgot-password" tabIndex={isSignup ? -1 : undefined}>
+                Forgot your password?
+              </Link>
             </div>
           </Collapse>
 

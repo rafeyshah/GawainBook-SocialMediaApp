@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import axios from "axios";
-import { PeopleOutline, LocalLibraryOutlined, DynamicFeed, PersonOutline } from "@material-ui/icons";
+import { PeopleOutline, LocalLibraryOutlined, DynamicFeed, PersonOutline, SettingsOutlined, GavelOutlined } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
 import Avatar from "../avatar/Avatar";
 import "./sidebar.css";
@@ -60,6 +60,16 @@ export default function Sidebar() {
           <PersonOutline style={{ fontSize: 20 }} />
           Profile
         </NavLink>
+        <NavLink to="/settings" className="sidebarLink" activeClassName="active">
+          <SettingsOutlined style={{ fontSize: 20 }} />
+          Settings
+        </NavLink>
+        {user.isAdmin && (
+          <NavLink to="/admin" className="sidebarLink" activeClassName="active">
+            <GavelOutlined style={{ fontSize: 20 }} />
+            Admin
+          </NavLink>
+        )}
       </nav>
 
       <section className="sidebarSection">

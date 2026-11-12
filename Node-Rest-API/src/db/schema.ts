@@ -36,6 +36,11 @@ export const users = pgTable(
     favoriteGenres: text("favorite_genres").array().notNull().default(sql`'{}'::text[]`),
     readingLanguage: text("reading_language"),
     pace: smallint("pace"), // chapters per week
+    // Launch readiness: verified email, accepted terms, admin suspension.
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+    termsVersion: text("terms_version"),
+    suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -330,9 +335,8 @@ export const reports = pgTable(
     reporterId: text("reporter_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    circleId: text("circle_id")
-      .notNull()
-      .references(() => circles.id, { onDelete: "cascade" }),
+    // Null for site-wide reports (a post or a profile), which go to admins.
+    circleId: text("circle_id").references(() => circles.id, { onDelete: "cascade" }),
     targetType: text("target_type").notNull(),
     targetId: text("target_id").notNull(),
     reason: text("reason").notNull(),
@@ -343,7 +347,8 @@ export const reports = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
-    check("reports_target_type", sql`${t.targetType} in ('thread', 'comment')`),
+    check("reports_target_type", sql`${t.targetType} in ('thread', 'comment', 'post', 'user')`),
+    check("reports_circle_scope", sql`(${t.targetType} in ('thread', 'comment')) = (${t.circleId} is not null)`),
     check("reports_reason", sql`${t.reason} in ('spoiler', 'harassment', 'spam', 'other')`),
     check("reports_status", sql`${t.status} in ('open', 'hidden', 'dismissed')`),
     check("reports_details_length", sql`char_length(${t.details}) <= 500`),
@@ -377,6 +382,26 @@ export const notifications = pgTable(
     check("notifications_type", sql`${t.type} in ('reply')`),
     index("notifications_user_idx").on(t.userId, t.createdAt),
   ]
+);
+
+// Single-use, expiring links sent by email (verify address, reset password).
+// Only a hash of the token is stored.
+export const emailTokens = pgTable(
+  "email_tokens",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    tokenHash: text("token_hash").notNull().unique("email_tokens_hash_unique"),
+    // For verification: the address the link was sent to (it may change).
+    email: text("email").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [check("email_tokens_kind", sql`${t.kind} in ('verify', 'reset')`), index("email_tokens_user_idx").on(t.userId, t.kind)]
 );
 
 export type User = typeof users.$inferSelect;

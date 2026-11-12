@@ -1,6 +1,6 @@
 import { getDb } from "../src/db/client";
 import { waitlistEntries } from "../src/db/schema";
-import { legalConfig } from "../src/legal";
+import { DEFAULT_PRIVACY_VERSION, legalConfig } from "../src/legal";
 import { GENRES, JOINED_MESSAGE } from "../src/routes/waitlist";
 import { legal, newClient, makeApp, Client, request, app } from "./helpers";
 
@@ -17,7 +17,7 @@ describe("legalConfig", () => {
   const full = { LEGAL_NAME: "Jane Reader", LEGAL_ADDRESS: "Bookstraße 1|10115 Berlin|Germany", LEGAL_EMAIL: "hello@example.com" };
 
   test("reads the operator from env, splitting the address on | or newlines", () => {
-    expect(legalConfig({ ...full, WAITLIST_OPEN: "true" })).toEqual({ operator: OPERATOR, privacyVersion: "2026-11-10", waitlistOpen: true });
+    expect(legalConfig({ ...full, WAITLIST_OPEN: "true" })).toEqual({ operator: OPERATOR, privacyVersion: DEFAULT_PRIVACY_VERSION, waitlistOpen: true });
     expect(legalConfig({ ...full, LEGAL_ADDRESS: "Bookstraße 1\\n10115 Berlin\\nGermany" }).operator?.address).toEqual(OPERATOR.address);
   });
 

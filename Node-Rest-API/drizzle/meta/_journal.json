@@ -29,6 +29,13 @@
       "when": 1794433031556,
       "tag": "0003_phase1_safety",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794439687920,
+      "tag": "0004_launch_readiness",
+      "breakpoints": true
     }
   ]
 }

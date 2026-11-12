@@ -44,3 +44,9 @@ test("renders nothing when signed out", () => {
   const { container } = renderWithAuth(<Topbar />, { user: null });
   expect(container).toBeEmptyDOMElement();
 });
+
+
+test("has a Settings shortcut (for phones, where there's no sidebar)", () => {
+  renderWithAuth(<Topbar />);
+  expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+});

@@ -193,7 +193,7 @@ describe("reports", () => {
   });
 
   test.each([
-    ["an unknown type", { targetType: "post", reason: "spam" }, 400],
+    ["an unknown type", { targetType: "book", reason: "spam" }, 400],
     ["no reason", { targetType: "thread" }, 400],
     ["an unknown reason", { targetType: "thread", reason: "meh" }, 400],
     ["long details", { targetType: "thread", reason: "other", details: "x".repeat(501) }, 400],
@@ -447,7 +447,7 @@ describe("rate limits on posting", () => {
     const make = async () => {
       const c = await new Client(limited).init();
       const n = Math.random().toString(36).slice(2, 8);
-      await c.post("/api/auth/register", { username: `rl${n}`, email: `rl${n}@example.com`, password: "secret123" });
+      await c.post("/api/auth/register", { username: `rl${n}`, email: `rl${n}@example.com`, password: "secret123", acceptTerms: true, confirmAge: true });
       return c;
     };
     const a = await make();

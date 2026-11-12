@@ -1,6 +1,6 @@
 // "Nobody can act as another user": authentication, authorization and CSRF.
 import { eq } from "drizzle-orm";
-import { app, request, newClient, signUp, createPost, sessionTokenFrom, Client } from "./helpers";
+import { app, request, newClient, signUp, createPost, sessionTokenFrom, Client, CONSENT } from "./helpers";
 import { getDb } from "../src/db/client";
 import { sessions } from "../src/db/schema";
 import { hashToken } from "../src/auth";
@@ -48,7 +48,7 @@ describe("every protected route requires a session", () => {
   });
 
   test("a tampered token (one character changed) is rejected", async () => {
-    const reg = await (await newClient()).post("/api/auth/register", { username: "tam", email: "t@example.com", password: "secret123" });
+    const reg = await (await newClient()).post("/api/auth/register", { username: "tam", email: "t@example.com", password: "secret123", ...CONSENT });
     const token = sessionTokenFrom(reg)!;
     const tampered = (token[0] === "A" ? "B" : "A") + token.slice(1);
     expect((await request(app).get("/api/auth/me").set("Cookie", `gb_session=${token}`)).status).toBe(200);
@@ -56,7 +56,7 @@ describe("every protected route requires a session", () => {
   });
 
   test("an expired session is rejected", async () => {
-    const reg = await (await newClient()).post("/api/auth/register", { username: "old", email: "o@example.com", password: "secret123" });
+    const reg = await (await newClient()).post("/api/auth/register", { username: "old", email: "o@example.com", password: "secret123", ...CONSENT });
     const token = sessionTokenFrom(reg)!;
     await getDb().update(sessions).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(sessions.tokenHash, hashToken(token)));
     expect((await request(app).get("/api/auth/me").set("Cookie", `gb_session=${token}`)).status).toBe(401);
@@ -64,7 +64,8 @@ describe("every protected route requires a session", () => {
 
   test("deleting the account ends its sessions", async () => {
     const { client, user } = await signUp();
-    expect((await client.delete(`/api/users/${user._id}`)).status).toBe(200);
+    void user;
+    expect((await client.delete("/api/account", { password: "secret123" })).status).toBe(200);
     expect((await client.get("/api/auth/me")).status).toBe(401);
   });
 });
@@ -120,8 +121,10 @@ describe("user A can't act as user B", () => {
   test("changing your password signs out your other sessions", async () => {
     const other = await newClient();
     await other.post("/api/auth/login", { email: alice.user.email, password: "secret123" });
-    await alice.client.put(`/api/users/${alice.user._id}`, { password: "brandnew99" });
+    expect((await alice.client.put("/api/account/password", { currentPassword: "secret123", newPassword: "brandnew99" })).status).toBe(200);
     expect((await other.get("/api/auth/me")).status).toBe(401);
+    // …but keeps you signed in where you changed it.
+    expect((await alice.client.get("/api/auth/me")).status).toBe(200);
   });
 });
 
@@ -157,7 +160,7 @@ describe("CSRF protection", () => {
   test("sign-in rotates the CSRF token", async () => {
     const client = await newClient();
     const before = client.csrf;
-    await client.post("/api/auth/register", { username: "rot", email: "r@example.com", password: "secret123" });
+    await client.post("/api/auth/register", { username: "rot", email: "r@example.com", password: "secret123", ...CONSENT });
     expect(client.csrf).not.toBe(before);
   });
 

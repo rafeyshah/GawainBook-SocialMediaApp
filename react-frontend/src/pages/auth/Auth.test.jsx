@@ -11,6 +11,16 @@ const renderAuth = (mode, auth = {}) => renderWithAuth(<Auth mode={mode} />, { u
 
 const field = (label) => screen.getByLabelText(label);
 
+const agree = () => {
+  userEvent.click(screen.getByLabelText(/I accept the terms of use/));
+  userEvent.click(screen.getByLabelText(/at least 16 years old/));
+};
+
+test("sign-in links to 'Forgot your password?'; sign-up doesn't show it", () => {
+  renderAuth("login");
+  expect(screen.getByRole("link", { name: "Forgot your password?" })).toHaveAttribute("href", "/forgot-password");
+});
+
 describe("sign in", () => {
   test("shows only email and password", () => {
     renderAuth("login");
@@ -79,7 +89,11 @@ describe("create account", () => {
     renderAuth("register");
     expect(screen.getByRole("heading", { name: "Create your account" })).toBeInTheDocument();
     ["Username", "Email", "Password", "Confirm password"].forEach((l) => expect(field(l)).toBeEnabled());
-    expect(screen.getByText("At least 6 characters.")).toBeInTheDocument();
+    expect(screen.getByText(/At least 8 characters\./)).toBeInTheDocument();
+    expect(screen.getByLabelText(/I accept the terms of use/)).not.toBeChecked();
+    expect(screen.getByLabelText(/at least 16 years old/)).not.toBeChecked();
+    expect(screen.getByRole("link", { name: "terms of use" })).toHaveAttribute("href", "/terms");
+    expect(screen.getByRole("link", { name: "privacy notice" })).toHaveAttribute("href", "/privacy");
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
   });
 
@@ -103,13 +117,40 @@ describe("create account", () => {
     axios.post.mockResolvedValueOnce({ data: { _id: "u1" } });
     renderAuth("register");
     fill({ username: "  jane ", email: " jane@example.com " });
+    agree();
     userEvent.click(screen.getByRole("button", { name: "Create account" }));
     expect(axios.post).toHaveBeenCalledWith("/auth/register", {
       username: "jane",
       email: "jane@example.com",
       password: "secret123",
+      acceptTerms: true,
+      confirmAge: true,
     });
     await screen.findByRole("button", { name: "Create account" });
+  });
+
+  test("without accepting the terms, nothing is sent", () => {
+    renderAuth("register");
+    fill({});
+    userEvent.click(screen.getByLabelText(/at least 16 years old/));
+    userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("accept the terms");
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  test("without confirming your age, nothing is sent", () => {
+    renderAuth("register");
+    fill({});
+    userEvent.click(screen.getByLabelText(/I accept the terms of use/));
+    userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("at least 16");
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  test("the password must be at least 8 characters", () => {
+    renderAuth("register");
+    expect(field("Password")).toHaveAttribute("minLength", "8");
+    expect(field("Confirm password")).toHaveAttribute("minLength", "8");
   });
 
   test("Show reveals both password fields", () => {

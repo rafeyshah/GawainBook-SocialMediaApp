@@ -109,7 +109,7 @@ describe("GET /api/books/search", () => {
   const clientFor = async (ol: OpenLibrary) => {
     const c = await new Client(makeApp({}, ol)).init();
     const n = Math.random().toString(36).slice(2, 8);
-    await c.post("/api/auth/register", { username: `bs${n}`, email: `bs${n}@example.com`, password: "secret123" });
+    await c.post("/api/auth/register", { username: `bs${n}`, email: `bs${n}@example.com`, password: "secret123", acceptTerms: true, confirmAge: true });
     return c;
   };
 

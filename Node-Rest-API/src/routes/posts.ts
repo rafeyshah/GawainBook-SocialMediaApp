@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { follows, postLikes, posts, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
@@ -108,7 +108,13 @@ router.get(
     const rows = await db
       .select()
       .from(posts)
-      .where(or(eq(posts.userId, me), inArray(posts.userId, followed)))
+      .where(
+        and(
+          or(eq(posts.userId, me), inArray(posts.userId, followed)),
+          // Suspended readers' posts drop out of everyone's feed.
+          notInArray(posts.userId, db.select({ id: users.id }).from(users).where(isNotNull(users.suspendedAt)))
+        )
+      )
       .orderBy(desc(posts.createdAt))
       .limit(200);
     res.json(await postDtos(db, rows));
@@ -119,8 +125,8 @@ router.get(
   "/profile/:username",
   handle(async (req, res) => {
     const db = getDb();
-    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.username, req.params.username));
-    if (!user) throw new HttpError(404, "User not found.");
+    const [user] = await db.select({ id: users.id, suspendedAt: users.suspendedAt }).from(users).where(eq(users.username, req.params.username));
+    if (!user || (user.suspendedAt && !req.user!.isAdmin)) throw new HttpError(404, "User not found.");
     // Blocked either way: no posts.
     if ((await blockedIds(req.user!.id)).has(user.id)) {
       res.json([]);

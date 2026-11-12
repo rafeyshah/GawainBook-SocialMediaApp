@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useContext } from "react";
-import { MenuBook, ExitToApp } from "@material-ui/icons";
+import { MenuBook, ExitToApp, SettingsOutlined } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
 import { logoutCall } from "../../apiCalls";
 import Avatar from "../avatar/Avatar";
@@ -25,6 +25,9 @@ export default function Topbar() {
         <div className="topbarActions">
           <ThemeSwitcher />
           <NotificationBell />
+          <Link to="/settings" className="btn btnGhost topbarSettings" aria-label="Settings">
+            <SettingsOutlined style={{ fontSize: 20 }} />
+          </Link>
           <Link
             to={`/profile/${user.username}`}
             className="topbarProfile"

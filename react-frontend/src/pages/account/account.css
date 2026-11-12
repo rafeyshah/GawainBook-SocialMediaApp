@@ -1,0 +1,139 @@
+.accountForm {
+  display: grid;
+  gap: 14px;
+  max-width: 420px;
+}
+.accountField {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.accountField input {
+  font: inherit;
+  font-weight: 400;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+.accountField input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.accountNotice {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  line-height: 1.5;
+}
+.accountError {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+  margin: 0;
+}
+.accountError a {
+  color: inherit;
+  font-weight: 600;
+}
+.accountBack {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Settings */
+.settingsSection {
+  display: grid;
+  gap: 10px;
+}
+.settingsSection + .settingsSection {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.settingsSection h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.settingsSection p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.settingsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.statusPill.warn {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.dangerZone {
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.btnDanger {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+.btnDanger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+/* Banner asking to confirm your email */
+.verifyBanner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 14px;
+}
+.verifyBanner .itemActions {
+  margin: 0;
+}
+
+/* Admin */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.statTile {
+  padding: 14px 16px;
+}
+.statTile strong {
+  display: block;
+  font-size: 26px;
+  line-height: 1.1;
+}
+.statTile span {
+  color: var(--muted);
+  font-size: 13px;
+}

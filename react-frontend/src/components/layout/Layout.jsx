@@ -2,6 +2,7 @@ import { useContext } from "react";
 import { NavLink } from "react-router-dom";
 import Topbar from "../topbar/Topbar";
 import Sidebar from "../sidebar/Sidebar";
+import VerifyBanner from "../verifyBanner/VerifyBanner";
 import { AuthContext } from "../../context/AuthContext";
 import "./layout.css";
 
@@ -40,7 +41,10 @@ export default function Layout({ children, width = "wide", aside = null }) {
       <div className="layoutBody">
         <Sidebar />
         <div className={`layoutContent ${width} ${aside ? "withAside" : ""}`} data-testid="layout-content">
-          <main className="layoutMain">{children}</main>
+          <main className="layoutMain">
+            <VerifyBanner />
+            {children}
+          </main>
           {aside && (
             <aside className="layoutAside" aria-label="More for you">
               {aside}

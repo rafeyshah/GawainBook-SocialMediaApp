@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { Favorite, FavoriteBorder } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
 import Avatar from "../avatar/Avatar";
+import ReportForm from "../report/ReportForm";
+import "../../pages/reading/community.css";
 import "./post.css";
 
 const PF = process.env.REACT_APP_PUBLIC_FOLDER || "/images/";
@@ -18,6 +20,8 @@ export default function Post({ post }) {
   const [likes, setLikes] = useState(post.likes.length);
   const [busy, setBusy] = useState(false);
   const [likeError, setLikeError] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +99,28 @@ export default function Post({ post }) {
             Couldn't update. Try again.
           </span>
         )}
+        {post.userId !== currentUser._id && !reported && !reporting && (
+          <button type="button" className="linkBtn postReport" onClick={() => setReporting(true)} aria-label={`Report post by ${name || "this reader"}`}>
+            Report
+          </button>
+        )}
+        {reported && (
+          <span className="postReport memberMeta" role="status">
+            Reported. Thanks.
+          </span>
+        )}
       </footer>
+      {reporting && (
+        <ReportForm
+          targetType="post"
+          targetId={post._id}
+          onCancel={() => setReporting(false)}
+          onDone={() => {
+            setReporting(false);
+            setReported(true);
+          }}
+        />
+      )}
     </article>
   );
 }

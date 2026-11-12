@@ -1,4 +1,4 @@
-import { app, request, newClient, signUp, setCookies, sessionTokenFrom, makeApp, Client } from "./helpers";
+import { app, request, newClient, signUp, setCookies, sessionTokenFrom, makeApp, Client, CONSENT } from "./helpers";
 import { normalizeEmail } from "../src/routes/auth";
 
 describe("normalizeEmail", () => {
@@ -32,7 +32,7 @@ describe("password hashing compatibility", () => {
 
 describe("POST /api/auth/register", () => {
   const valid = { username: "jane", email: "jane@example.com", password: "secret123" };
-  const register = async (body: Record<string, unknown>) => (await newClient()).post("/api/auth/register", body);
+  const register = async (body: Record<string, unknown>) => (await newClient()).post("/api/auth/register", { ...CONSENT, ...body });
 
   test("creates an account, signs in and never returns the password hash", async () => {
     const res = await register(valid);
@@ -58,8 +58,13 @@ describe("POST /api/auth/register", () => {
     ["missing email", { email: undefined }, /valid email/],
     ["invalid email", { email: "not-an-email" }, /valid email/],
     ["email over 254 characters", { email: `${"a".repeat(250)}@x.com` }, /valid email/],
-    ["missing password", { password: undefined }, /at least 6/],
-    ["password too short", { password: "12345" }, /at least 6/],
+    ["missing password", { password: undefined }, /at least 8/],
+    ["password too short (7)", { password: "1234567" }, /at least 8/],
+    ["no terms acceptance", { acceptTerms: undefined }, /accept the terms/],
+    ["terms 'accepted' as a string", { acceptTerms: "true" }, /accept the terms/],
+    ["terms declined", { acceptTerms: false }, /accept the terms/],
+    ["no age confirmation", { confirmAge: undefined }, /at least 16/],
+    ["age declined", { confirmAge: false }, /at least 16/],
     ["password over 72 characters (bcrypt limit)", { password: "a".repeat(73) }, /at most 72/],
   ])("rejects %s with 400 and no session", async (_name, change, message) => {
     const res = await register({ ...valid, ...change });
@@ -69,7 +74,7 @@ describe("POST /api/auth/register", () => {
   });
 
   test("accepts boundary lengths", async () => {
-    expect((await register({ ...valid, username: "abc", password: "123456" })).status).toBe(201);
+    expect((await register({ ...valid, username: "abc", password: "12345678" })).status).toBe(201);
     expect((await register({ username: "a".repeat(20), email: "b@example.com", password: "a".repeat(72) })).status).toBe(201);
   });
 
@@ -95,7 +100,7 @@ describe("POST /api/auth/register", () => {
 
 describe("session cookie", () => {
   test("is httpOnly, SameSite=Lax, scoped to / and lasts 30 days", async () => {
-    const res = await (await newClient()).post("/api/auth/register", { username: "jane", email: "j@example.com", password: "secret123" });
+    const res = await (await newClient()).post("/api/auth/register", { username: "jane", email: "j@example.com", password: "secret123", ...CONSENT });
     const cookie = setCookies(res).find((c) => c.startsWith("gb_session="))!;
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/SameSite=Lax/i);
@@ -109,7 +114,7 @@ describe("session cookie", () => {
     const before = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     try {
-      const res = await client.post("/api/auth/register", { username: "prod", email: "p@example.com", password: "secret123" });
+      const res = await client.post("/api/auth/register", { username: "prod", email: "p@example.com", password: "secret123", ...CONSENT });
       expect(res.status).toBe(201);
       const cookies = setCookies(res);
       expect(cookies.find((c) => c.startsWith("gb_session="))).toMatch(/; Secure/);
@@ -120,8 +125,8 @@ describe("session cookie", () => {
   });
 
   test("the token is random and only its hash is stored", async () => {
-    const a = await (await newClient()).post("/api/auth/register", { username: "aaa", email: "a@example.com", password: "secret123" });
-    const b = await (await newClient()).post("/api/auth/register", { username: "bbb", email: "b@example.com", password: "secret123" });
+    const a = await (await newClient()).post("/api/auth/register", { username: "aaa", email: "a@example.com", password: "secret123", ...CONSENT });
+    const b = await (await newClient()).post("/api/auth/register", { username: "bbb", email: "b@example.com", password: "secret123", ...CONSENT });
     const ta = sessionTokenFrom(a)!;
     expect(ta).not.toBe(sessionTokenFrom(b));
     expect(ta.length).toBeGreaterThanOrEqual(40);
@@ -194,7 +199,7 @@ describe("GET /api/auth/me and POST /api/auth/logout", () => {
 
   test("logout ends the session on the server, so the old token stops working", async () => {
     const client = await newClient();
-    const reg = await client.post("/api/auth/register", { username: "leaver", email: "l@example.com", password: "secret123" });
+    const reg = await client.post("/api/auth/register", { username: "leaver", email: "l@example.com", password: "secret123", ...CONSENT });
     const token = sessionTokenFrom(reg)!;
     const out = await client.post("/api/auth/logout");
     expect(out.status).toBe(204);
@@ -225,8 +230,8 @@ describe("rate limiting", () => {
   test("register shares the same limit", async () => {
     const limited = makeApp({ auth: { windowMs: 60_000, max: 1 } });
     const client = await new Client(limited).init();
-    await client.post("/api/auth/register", { username: "one", email: "1@example.com", password: "secret123" });
-    expect((await client.post("/api/auth/register", { username: "two", email: "2@example.com", password: "secret123" })).status).toBe(429);
+    await client.post("/api/auth/register", { username: "one", email: "1@example.com", password: "secret123", ...CONSENT });
+    expect((await client.post("/api/auth/register", { username: "two", email: "2@example.com", password: "secret123", ...CONSENT })).status).toBe(429);
   });
 
   test("other routes aren't limited by the auth limiter", async () => {

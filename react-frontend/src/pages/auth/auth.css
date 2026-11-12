@@ -306,3 +306,34 @@
     animation: none;
   }
 }
+
+/* Sign-up consent and the "forgot password" link. */
+.authChecks {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 4px;
+}
+.authCheck {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.authCheck input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex: none;
+}
+.authCheck a,
+.authForgot a {
+  color: var(--accent);
+}
+.authForgot {
+  text-align: right;
+  font-size: 14px;
+  margin-top: -4px;
+}

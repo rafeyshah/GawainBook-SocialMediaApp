@@ -53,7 +53,7 @@ export async function publicProfile(db: Db, user: User): Promise<PublicProfile> 
 
 // The signed-in user's own view adds email and the admin flag.
 export async function ownAccount(db: Db, user: User) {
-  return { ...(await publicProfile(db, user)), email: user.email, isAdmin: user.isAdmin };
+  return { ...(await publicProfile(db, user)), email: user.email, isAdmin: user.isAdmin, emailVerified: Boolean(user.emailVerifiedAt) };
 }
 
 export interface PostDto {

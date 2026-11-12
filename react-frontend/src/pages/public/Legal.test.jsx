@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import axios from "axios";
-import { Impressum, Privacy } from "./Legal";
+import { Impressum, Privacy, Terms, TERMS_VERSION } from "./Legal";
+import { renderWithAuth } from "../../testUtils";
 
 jest.mock("axios");
 
@@ -60,4 +61,39 @@ describe("Privacy notice", () => {
     renderWith(Privacy, null);
     expect(await screen.findByText(/haven't been published yet/)).toBeInTheDocument();
   });
+});
+
+
+describe("Terms", () => {
+  test("covers age, conduct, spoilers, content rights, moderation and law, with the version", async () => {
+    axios.get.mockResolvedValueOnce({ data: { operator: null, privacyVersion: "v", waitlistOpen: false } });
+    renderWithAuth(<Terms />, { user: null });
+    expect(screen.getByRole("heading", { name: "Terms of use" })).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Version ${TERMS_VERSION}`))).toBeInTheDocument();
+    for (const h of ["Your account", "Be kind, and don't spoil", "What you post", "Moderation", "The service"]) {
+      expect(screen.getByRole("heading", { name: h })).toBeInTheDocument();
+    }
+    expect(screen.getByText("You must be at least 16.")).toBeInTheDocument();
+    expect(screen.getByText(/German law applies/)).toBeInTheDocument();
+    expect(await screen.findByText(/haven't been published yet/)).toBeInTheDocument();
+  });
+
+  test("the footer links to Terms", async () => {
+    axios.get.mockResolvedValueOnce({ data: { operator: null } });
+    renderWithAuth(<Terms />, { user: null });
+    expect(screen.getByRole("navigation", { name: "Legal" })).toContainElement(screen.getByRole("link", { name: "Terms" }));
+    await screen.findByText(/haven't been published yet/);
+  });
+});
+
+test("the privacy notice covers emails, the minimum age, Resend, Open Library and self-service tools", async () => {
+  axios.get.mockResolvedValueOnce({ data: { operator: null } });
+  renderWithAuth(<Privacy />, { user: null });
+  expect(screen.getByRole("heading", { name: "Emails" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Minimum age" })).toBeInTheDocument();
+  expect(screen.getByText(/Resend/)).toBeInTheDocument();
+  expect(screen.getByText(/Open Library/)).toBeInTheDocument();
+  expect(screen.getByText(/download all your data/)).toBeInTheDocument();
+  expect(screen.getByText(/no cookie banner/)).toBeInTheDocument();
+  await screen.findByText(/haven't been published yet/);
 });

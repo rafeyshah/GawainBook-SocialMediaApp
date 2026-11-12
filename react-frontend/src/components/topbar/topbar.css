@@ -103,3 +103,13 @@
     gap: 6px;
   }
 }
+
+/* Settings lives in the sidebar on wide screens; the gear is for phones. */
+.topbarSettings {
+  padding: 6px 8px;
+}
+@media (min-width: 861px) {
+  .topbarActions .topbarSettings {
+    display: none;
+  }
+}

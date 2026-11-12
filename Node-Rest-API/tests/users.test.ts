@@ -110,7 +110,7 @@ describe("GET /api/users/friends/:userId", () => {
     const a = await signUp();
     const b = await signUp();
     await a.client.put(`/api/users/${b.user._id}/follow`);
-    await b.client.delete(`/api/users/${b.user._id}`);
+    await b.client.delete("/api/account", { password: "secret123" });
     expect((await a.client.get(`/api/users/friends/${a.user._id}`)).body).toEqual([]);
   });
 
@@ -136,12 +136,15 @@ describe("PUT /api/users/:id", () => {
     expect(me).toMatchObject({ isAdmin: false, followers: [], username: a.user.username, email: "a@example.com" });
   });
 
-  test("changes the password so the new one works and the old one doesn't", async () => {
+  test("won't change the password (that needs the current one, via /api/account/password)", async () => {
     const a = await signUp({ email: "pw@example.com" });
-    await a.client.put(`/api/users/${a.user._id}`, { password: "newpass99" });
+    const res = await a.client.put(`/api/users/${a.user._id}`, { password: "newpass99", city: "Bath" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Settings/);
     const c = await newClient();
-    expect((await c.post("/api/auth/login", { email: "pw@example.com", password: "secret123" })).status).toBe(401);
-    expect((await c.post("/api/auth/login", { email: "pw@example.com", password: "newpass99" })).status).toBe(200);
+    expect((await c.post("/api/auth/login", { email: "pw@example.com", password: "secret123" })).status).toBe(200);
+    // Nothing else in the request was applied either.
+    expect((await a.client.get("/api/auth/me")).body.city).toBeNull();
   });
 
   test.each([
@@ -227,7 +230,12 @@ describe("DELETE /api/users/:id", () => {
     const bPost = await createPost(b.client);
     await a.client.put(`/api/posts/${bPost._id}/like`);
 
-    expect((await a.client.delete(`/api/users/${a.user._id}`)).status).toBe(200);
+    // The old route now points you to Settings (which asks for your password).
+    expect((await a.client.delete(`/api/users/${a.user._id}`)).status).toBe(400);
+    expect((await b.client.get("/api/users", { userId: a.user._id })).status).toBe(200);
+    expect((await a.client.delete(`/api/users/${b.user._id}`)).status).toBe(403);
+
+    expect((await a.client.delete("/api/account", { password: "secret123" })).status).toBe(200);
     expect((await b.client.get("/api/users", { userId: a.user._id })).status).toBe(404);
     expect((await b.client.get("/api/users", { userId: b.user._id })).body.followers).toEqual([]);
     expect((await b.client.get(`/api/posts/${post._id}`)).status).toBe(404);

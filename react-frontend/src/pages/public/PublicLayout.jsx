@@ -8,6 +8,8 @@ export function LegalLinks() {
     <nav className="legalLinks" aria-label="Legal">
       <Link to="/waitlist">Waitlist</Link>
       <span aria-hidden="true">·</span>
+      <Link to="/terms">Terms</Link>
+      <span aria-hidden="true">·</span>
       <Link to="/privacy">Privacy</Link>
       <span aria-hidden="true">·</span>
       <Link to="/impressum">Impressum</Link>
