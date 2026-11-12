@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { ImageOutlined, Close } from "@material-ui/icons";
+import { ImageOutlined, Close, VisibilityOffOutlined } from "@material-ui/icons";
 import { AuthContext } from "../../context/AuthContext";
 import { errorMessage } from "../../apiCalls";
 import Avatar from "../avatar/Avatar";
@@ -10,6 +10,36 @@ export const MAX_LENGTH = 500;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
+export const MAX_SPOILER_FOR = 80;
+
+// "This post has spoilers" plus which book. Shared by the composer and the editor.
+export function SpoilerFields({ spoiler, setSpoiler, spoilerFor, setSpoilerFor, idPrefix = "share" }) {
+  return (
+    <div className="spoilerFields">
+      <label className="spoilerToggle">
+        <input type="checkbox" checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />
+        <VisibilityOffOutlined style={{ fontSize: 16 }} aria-hidden="true" />
+        This post has spoilers
+      </label>
+      {spoiler && (
+        <>
+          <label className="srOnly" htmlFor={`${idPrefix}-spoilerFor`}>
+            Spoiler for which book? (optional)
+          </label>
+          <input
+            id={`${idPrefix}-spoilerFor`}
+            className="input spoilerForInput"
+            placeholder="For which book? (optional)"
+            maxLength={MAX_SPOILER_FOR}
+            value={spoilerFor}
+            onChange={(e) => setSpoilerFor(e.target.value)}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 // Composer for a new post. Calls onPosted(post) after it's saved.
 export default function Share({ onPosted }) {
   const { user } = useContext(AuthContext);
@@ -18,6 +48,8 @@ export default function Share({ onPosted }) {
   const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
   const [posting, setPosting] = useState(false);
+  const [spoiler, setSpoiler] = useState(false);
+  const [spoilerFor, setSpoilerFor] = useState("");
   const fileInput = useRef();
 
   useEffect(() => {
@@ -60,9 +92,15 @@ export default function Share({ onPosted }) {
         const uploaded = await axios.post("/upload", data);
         img = uploaded.data.filename;
       }
-      const res = await axios.post("/posts", { desc: trimmed, img });
+      const res = await axios.post("/posts", {
+        desc: trimmed,
+        img,
+        ...(spoiler ? { spoiler: true, spoilerFor: spoilerFor.trim() || null } : {}),
+      });
       setText("");
       setFile(null);
+      setSpoiler(false);
+      setSpoilerFor("");
       if (onPosted) onPosted(res.data);
     } catch (err) {
       setError(errorMessage(err));
@@ -104,6 +142,8 @@ export default function Share({ onPosted }) {
           </button>
         </div>
       )}
+
+      {(trimmed || file) && <SpoilerFields spoiler={spoiler} setSpoiler={setSpoiler} spoilerFor={spoilerFor} setSpoilerFor={setSpoilerFor} />}
 
       {error && (
         <div className="errorBox" role="alert">

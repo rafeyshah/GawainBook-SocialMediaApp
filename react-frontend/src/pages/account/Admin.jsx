@@ -97,20 +97,25 @@ export default function Admin() {
                   <strong>{reasonLabel[r.reason] || r.reason}</strong>
                   <span className="memberMeta">
                     {" "}
-                    · {r.targetType === "post" ? `post by ${r.target.author.username}` : `profile of ${r.target.username}`} · reported by{" "}
+                    · {r.targetType === "post" ? `post by ${r.target.author.username}` : r.targetType === "post_comment" ? `comment by ${r.target.author.username}` : `profile of ${r.target.username}`} · reported by{" "}
                     {r.reporter.username} {format(r.createdAt)}
                   </span>
                 </span>
-                {r.targetType === "post" ? (
+                {r.targetType === "post" || r.targetType === "post_comment" ? (
                   <blockquote className="reportQuote">{r.target.text || "(photo only)"}</blockquote>
                 ) : (
                   <blockquote className="reportQuote">{r.target.bio || "(no bio)"}</blockquote>
                 )}
                 {r.details && <span className="memberMeta">Note: {r.details}</span>}
                 <div className="itemActions">
-                  <Link className="linkBtn" to={`/profile/${r.targetType === "post" ? r.target.author.username : r.target.username}`}>
-                    Open profile
+                  <Link className="linkBtn" to={r.targetType === "post_comment" ? `/posts/${r.target.postId}` : `/profile/${r.targetType === "post" ? r.target.author.username : r.target.username}`}>
+                    {r.targetType === "post_comment" ? "Open post" : "Open profile"}
                   </Link>
+                  {r.targetType === "post_comment" && (
+                    <button type="button" className="linkBtn danger" onClick={() => act(() => axios.delete(`/admin/post-comments/${r.target._id}`), "Delete this comment?")}>
+                      Delete comment
+                    </button>
+                  )}
                   {r.targetType === "post" && (
                     <button type="button" className="linkBtn danger" onClick={() => act(() => axios.delete(`/admin/posts/${r.target._id}`), "Delete this post?")}>
                       Delete post
@@ -120,11 +125,11 @@ export default function Admin() {
                     type="button"
                     className="linkBtn danger"
                     onClick={() => {
-                      const who = r.targetType === "post" ? r.target.author : r.target;
+                      const who = r.targetType === "user" ? r.target : r.target.author;
                       act(() => axios.post(`/admin/users/${who._id}/suspend`), `Suspend ${who.username}? They'll be signed out and hidden from everyone.`);
                     }}
                   >
-                    Suspend {r.targetType === "post" ? r.target.author.username : r.target.username}
+                    Suspend {r.targetType === "user" ? r.target.username : r.target.author.username}
                   </button>
                   <button type="button" className="linkBtn" onClick={() => act(() => axios.post(`/admin/reports/${r._id}/dismiss`))}>
                     Dismiss

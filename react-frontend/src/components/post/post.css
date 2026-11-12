@@ -121,3 +121,145 @@ a.postAuthor:focus-visible {
 .postReport {
   margin-left: auto;
 }
+
+/* Actions, comments toggle, spoiler cover, comments */
+.postActions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+}
+.postCommentsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.postCommentsToggle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.postCommentsToggle:focus-visible {
+  outline: 2px solid var(--ring);
+}
+.postDate {
+  color: var(--muted);
+  text-decoration: none;
+}
+.postDate:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.postBody {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+.spoilerTag {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+.postBody.isCovered .postContent {
+  filter: blur(9px);
+  user-select: none;
+  pointer-events: none;
+  min-height: 60px;
+}
+.spoilerReveal {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 14px);
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.spoilerReveal:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .postContent {
+    transition: filter 0.25s ease;
+  }
+}
+
+.postComments {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+.postCommentList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.postComment {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.postCommentBody {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.postCommentBody .byline {
+  font-size: 13px;
+}
+.postCommentText {
+  margin: 2px 0 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.postCommentBody .itemActions {
+  margin-top: 2px;
+}
+.postCommentForm {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.postCommentForm textarea {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+  height: 38px;
+  min-height: 38px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.postEditor .field textarea {
+  width: 100%;
+}

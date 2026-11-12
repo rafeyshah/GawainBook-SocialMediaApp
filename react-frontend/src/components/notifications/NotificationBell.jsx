@@ -96,22 +96,42 @@ export default function NotificationBell() {
               Couldn't load notifications.
             </p>
           ) : data.items.length === 0 ? (
-            <p className="notifEmpty">No notifications yet. When someone replies to your discussions, you'll see it here.</p>
+            <p className="notifEmpty">No notifications yet. When someone replies to your discussions or comments on your posts, you'll see it here.</p>
           ) : (
             <ul className="notifList">
               {data.items.map((n) => (
                 <li key={n._id}>
-                  <Link to={`/threads/${n.thread._id}`} className={`notifItem ${n.read ? "" : "unread"}`} onClick={() => markOne(n)}>
+                  <Link
+                    to={n.type === "post_comment" ? `/posts/${n.post._id}` : `/threads/${n.thread._id}`}
+                    className={`notifItem ${n.read ? "" : "unread"}`}
+                    onClick={() => markOne(n)}
+                  >
                     <Avatar user={n.actor} size={30} />
-                    <span className="notifText">
-                      <span>
-                        <strong>{n.actor.username}</strong> replied to <strong>{n.thread.title}</strong>
+                    {n.type === "post_comment" ? (
+                      <span className="notifText">
+                        <span>
+                          <strong>{n.actor.username}</strong> commented on your post
+                          {n.post.preview ? (
+                            <>
+                              {" "}
+                              <strong>“{n.post.preview}”</strong>
+                            </>
+                          ) : null}
+                        </span>
+                        {n.preview ? <span className="notifPreview">“{n.preview}”</span> : <span className="notifPreview">Hidden: the post has spoilers.</span>}
+                        <span className="notifMeta">{format(n.createdAt)}</span>
                       </span>
-                      <span className="notifPreview">“{n.preview}”</span>
-                      <span className="notifMeta">
-                        {n.circle.name} · Ch {n.thread.chapterSeq} · {format(n.createdAt)}
+                    ) : (
+                      <span className="notifText">
+                        <span>
+                          <strong>{n.actor.username}</strong> replied to <strong>{n.thread.title}</strong>
+                        </span>
+                        <span className="notifPreview">“{n.preview}”</span>
+                        <span className="notifMeta">
+                          {n.circle.name} · Ch {n.thread.chapterSeq} · {format(n.createdAt)}
+                        </span>
                       </span>
-                    </span>
+                    )}
                     {!n.read && <span className="notifDot" aria-label="Unread" />}
                   </Link>
                 </li>

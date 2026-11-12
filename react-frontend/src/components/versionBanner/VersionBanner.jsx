@@ -3,7 +3,7 @@ import axios from "axios";
 import "./versionBanner.css";
 
 // Must match API_VERSION in Node-Rest-API/src/version.ts.
-export const EXPECTED_API_VERSION = 5;
+export const EXPECTED_API_VERSION = 6;
 
 // A server older than this frontend (e.g. a local API that wasn't restarted,
 // or a deploy that's half done) makes pages fail in confusing ways. Detect it

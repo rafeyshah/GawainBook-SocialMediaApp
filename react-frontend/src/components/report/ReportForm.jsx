@@ -9,7 +9,7 @@ export const REASONS = [
   ["other", "Something else"],
 ];
 
-const NOUN = { thread: "discussion", comment: "reply", post: "post", user: "profile" };
+const NOUN = { thread: "discussion", comment: "reply", post: "post", post_comment: "comment", user: "profile" };
 
 // Report a discussion or reply (to the circle's moderators), or a post or
 // profile (to the site's admins).
@@ -48,7 +48,7 @@ export default function ReportForm({ targetType, targetId, onDone, onCancel }) {
         <textarea className="input" rows={2} maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)} />
       </label>
       <p className="sourceNote">
-        {targetType === "post" || targetType === "user"
+        {targetType === "post" || targetType === "user" || targetType === "post_comment"
           ? "GawainBook's moderators review reports about posts and profiles. The reader isn't told who reported them."
           : "Only the circle's organiser and moderators see reports. The writer isn't told who reported them."}
       </p>

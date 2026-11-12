@@ -12,7 +12,7 @@ beforeAll(() => {
 
 afterEach(async () => {
   await getDb().execute(
-    sql`truncate table notifications, reports, blocks, invitations, comments, threads, circle_members, circles, user_books, chapters, books, sessions, waitlist_entries, post_likes, follows, posts, users restart identity cascade`
+    sql`truncate table notifications, post_comments, email_tokens, reports, blocks, invitations, comments, threads, circle_members, circles, user_books, chapters, books, sessions, waitlist_entries, post_likes, follows, posts, users restart identity cascade`
   );
 });
 

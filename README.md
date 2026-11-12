@@ -120,6 +120,9 @@ The same check filters thread lists, single threads, replies, search and notific
 
 **Social**
 - Share posts with text and a photo, with no page reload, a 500-character limit and a live counter near the limit
+- **Spoiler cover:** mark a post as a spoiler (optionally naming the book); text, photo and comments stay blurred until a reader taps "Show spoiler"
+- **Comments** on posts: add, edit your own, delete your own (or any on your own post), report others'; the post's owner is notified
+- Edit or delete your own posts; edits are marked "edited"; every post has its own page (`/posts/:id`)
 - Photos are stored in a private Neon bucket and served through short-lived signed links, so they survive redeploys
 - A home feed of your posts and posts from people you follow, newest first
 - Profile pages with bio, location, join date, and follower and following counts
@@ -334,13 +337,15 @@ Every endpoint is under `/api`. Request and response bodies are JSON.
 | `GET` | `/users/friends/:userId` | List the people a user follows |
 | `PUT` | `/users/:id/follow` | Follow a user |
 | `PUT` | `/users/:id/unfollow` | Unfollow a user |
-| `POST` | `/posts` | Create a post: `{ desc, img? }` |
-| `PUT` | `/posts/:id` | Edit your post's text |
+| `POST` | `/posts` | Create a post: `{ desc, img?, spoiler?, spoilerFor? }` |
+| `PUT` | `/posts/:id` | Edit your post: `{ desc?, spoiler?, spoilerFor? }` |
 | `DELETE` | `/posts/:id` | Delete your post |
 | `PUT` | `/posts/:id/like` | Like or unlike a post → `{ liked, likes }` |
 | `GET` | `/posts/:id` | Get a post |
 | `GET` | `/posts/timeline` | Your feed: your posts plus posts from people you follow |
 | `GET` | `/posts/profile/:username` | A user's posts |
+| `GET` / `POST` | `/posts/:id/comments` | Comments on a post (oldest first) / add one `{ body }` |
+| `PATCH` / `DELETE` | `/post-comments/:id` | Edit your comment `{ body }` / delete it (yours, or any on your post) |
 | `GET` | `/legal` | Public: Impressum details and whether the waitlist is open |
 | `POST` | `/waitlist` | Public: `{ email, favouriteGenre, organizesBookClub, consent: true }` |
 | `GET` | `/books`, `/books/:idOrSlug` | Books, with your shelf and progress |
@@ -387,7 +392,7 @@ npm run test:e2e          # Playwright: the whole circle journey in a real brows
 - **Frontend:** Jest and React Testing Library, with real-browser checks of key flows against the live site.
 - **End to end:** [Playwright](e2e/tests/circle-journey.spec.js) drives two readers through the core promise: sign up, join with an invite link, set chapter 4, see chapters 1–4, find chapter 9 locked (in the list, by direct link, through the API and in search), reply, and get notified. It runs against a throwaway server with its own temporary database (`npm run build` in both apps first). `npm run test:e2e:live` runs it against the live site and deletes its test accounts afterwards.
 
-Current totals: **612 backend tests**, **438 frontend tests** and **3 end-to-end tests** (the circle journey; accounts and email; reporting and admin), all passing.
+Current totals: **653 backend tests**, **468 frontend tests** and **4 end-to-end tests** (the circle journey; accounts and email; reporting and admin; posts, spoilers and comments), all passing.
 
 ## Deployment
 

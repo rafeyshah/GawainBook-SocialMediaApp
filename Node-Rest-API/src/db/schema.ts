@@ -80,11 +80,16 @@ export const posts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     description: text("description").notNull().default(""),
     imageKey: text("image_key"),
+    // Spoiler cover: text and photo stay blurred until a reader taps to reveal.
+    spoiler: boolean("spoiler").notNull().default(false),
+    spoilerFor: text("spoiler_for"), // e.g. the book's title
+    editedAt: timestamp("edited_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     check("posts_description_length", sql`char_length(${t.description}) <= 500`),
+    check("posts_spoiler_for_length", sql`${t.spoilerFor} is null or char_length(${t.spoilerFor}) <= 80`),
     check("posts_not_empty", sql`${t.description} <> '' or ${t.imageKey} is not null`),
     index("posts_user_created_idx").on(t.userId, t.createdAt.desc()),
   ]
@@ -106,6 +111,27 @@ export const postLikes = pgTable(
 
 // Server-side sessions (D2). Only a SHA-256 hash of the cookie token is
 // stored, so a database leak can't be replayed as a login.
+// Comments on feed posts (circle discussions use `comments`).
+export const postComments = pgTable(
+  "post_comments",
+  {
+    id: id(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("post_comments_body_length", sql`char_length(${t.body}) between 1 and 1000`),
+    index("post_comments_post_idx").on(t.postId, t.createdAt),
+  ]
+);
+
 export const sessions = pgTable(
   "sessions",
   {
@@ -347,7 +373,7 @@ export const reports = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
-    check("reports_target_type", sql`${t.targetType} in ('thread', 'comment', 'post', 'user')`),
+    check("reports_target_type", sql`${t.targetType} in ('thread', 'comment', 'post', 'post_comment', 'user')`),
     check("reports_circle_scope", sql`(${t.targetType} in ('thread', 'comment')) = (${t.circleId} is not null)`),
     check("reports_reason", sql`${t.reason} in ('spoiler', 'harassment', 'spam', 'other')`),
     check("reports_status", sql`${t.status} in ('open', 'hidden', 'dismissed')`),
@@ -371,15 +397,20 @@ export const notifications = pgTable(
     actorId: text("actor_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    threadId: text("thread_id")
-      .notNull()
-      .references(() => threads.id, { onDelete: "cascade" }),
+    // A reply in a discussion (thread + comment), or a comment on a post.
+    threadId: text("thread_id").references(() => threads.id, { onDelete: "cascade" }),
     commentId: text("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+    postId: text("post_id").references(() => posts.id, { onDelete: "cascade" }),
+    postCommentId: text("post_comment_id").references(() => postComments.id, { onDelete: "cascade" }),
     readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
-    check("notifications_type", sql`${t.type} in ('reply')`),
+    check("notifications_type", sql`${t.type} in ('reply', 'post_comment')`),
+    check(
+      "notifications_target",
+      sql`(${t.type} = 'reply' and ${t.threadId} is not null) or (${t.type} = 'post_comment' and ${t.postId} is not null)`
+    ),
     index("notifications_user_idx").on(t.userId, t.createdAt),
   ]
 );

@@ -140,3 +140,41 @@ test("polls in the background while the tab is visible", async () => {
     jest.useRealTimers();
   }
 });
+
+
+describe("comments on your posts", () => {
+  const postItem = (over = {}) => ({
+    _id: "n9",
+    type: "post_comment",
+    read: false,
+    createdAt: new Date().toISOString(),
+    actor: { _id: "u3", username: "lizzy", profilePicture: "" },
+    post: { _id: "p4", preview: "Just finished Persuasion" },
+    preview: "Anne forever!",
+    ...over,
+  });
+
+  test("links to the post and quotes both", async () => {
+    await setup({ unread: 1, items: [postItem()] });
+    await openPanel("Notifications, 1 unread");
+    const link = screen.getByRole("link", { name: /lizzy commented on your post/ });
+    expect(link).toHaveAttribute("href", "/posts/p4");
+    expect(link).toHaveTextContent("“Just finished Persuasion”");
+    expect(link).toHaveTextContent("“Anne forever!”");
+  });
+
+  test("on a spoiler post, says the preview is hidden", async () => {
+    await setup({ unread: 1, items: [postItem({ post: { _id: "p4", preview: "" }, preview: "" })] });
+    await openPanel("Notifications, 1 unread");
+    const link = screen.getByRole("link", { name: /lizzy commented on your post/ });
+    expect(link).toHaveTextContent("Hidden: the post has spoilers.");
+    expect(link).not.toHaveTextContent("“”");
+  });
+
+  test("mixed with discussion replies", async () => {
+    await setup({ unread: 2, items: [postItem(), item()] });
+    await openPanel("Notifications, 2 unread");
+    expect(screen.getByRole("link", { name: /commented on your post/ })).toHaveAttribute("href", "/posts/p4");
+    expect(screen.getByRole("link", { name: /replied to That opening line/ })).toHaveAttribute("href", "/threads/t1");
+  });
+});

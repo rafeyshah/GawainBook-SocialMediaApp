@@ -98,7 +98,9 @@ test("shows a placeholder name when the author can't be loaded", async () => {
   axios.get.mockRejectedValueOnce(httpError(404, { error: "User not found." }));
   renderWithAuth(<Post post={makePost()} />);
   expect(await screen.findByText("Unknown reader")).toBeInTheDocument();
-  expect(screen.queryByRole("link")).toBeNull();
+  // No link to a profile that can't be found (the date still links to the post).
+  expect(screen.queryByRole("link", { name: /Unknown reader/ })).toBeNull();
+  expect(screen.getAllByRole("link").every((l) => l.getAttribute("href").startsWith("/posts/"))).toBe(true);
 });
 
 

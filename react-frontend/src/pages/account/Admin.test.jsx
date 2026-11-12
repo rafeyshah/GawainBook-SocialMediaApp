@@ -115,3 +115,30 @@ test("an empty queue says all clear", async () => {
   await setup();
   expect(screen.getByText("All clear")).toBeInTheDocument();
 });
+
+
+test("a reported comment shows its text, links to the post and can be deleted", async () => {
+  const commentReport = {
+    _id: "r3",
+    targetType: "post_comment",
+    targetId: "c7",
+    reason: "harassment",
+    details: "",
+    createdAt: new Date().toISOString(),
+    reporter: { _id: "u2", username: "darcy" },
+    target: { _id: "c7", text: "You're an idiot", postId: "p3", author: { _id: "u9", username: "wick" } },
+  };
+  api([commentReport]);
+  axios.delete.mockResolvedValue({ data: {} });
+  axios.post.mockResolvedValue({ data: {} });
+  await setup();
+  const item = within(screen.getByRole("list", { name: "Reports to review" })).getByRole("listitem");
+  expect(item).toHaveTextContent("comment by wick");
+  expect(item).toHaveTextContent("You're an idiot");
+  expect(within(item).getByRole("link", { name: "Open post" })).toHaveAttribute("href", "/posts/p3");
+  expect(within(item).queryByRole("button", { name: "Delete post" })).toBeNull();
+  userEvent.click(within(item).getByRole("button", { name: "Delete comment" }));
+  await waitFor(() => expect(axios.delete).toHaveBeenCalledWith("/admin/post-comments/c7"));
+  userEvent.click(within(item).getByRole("button", { name: "Suspend wick" }));
+  await waitFor(() => expect(axios.post).toHaveBeenCalledWith("/admin/users/u9/suspend"));
+});

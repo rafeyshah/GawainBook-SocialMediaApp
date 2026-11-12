@@ -64,7 +64,7 @@ export default function Feed({ username }) {
           </p>
         </div>
       ) : (
-        posts.map((p) => <Post key={p._id} post={p} />)
+        posts.map((p) => <Post key={p._id} post={p} onDeleted={(id) => setPosts((list) => list.filter((x) => x._id !== id))} />)
       )}
     </section>
   );

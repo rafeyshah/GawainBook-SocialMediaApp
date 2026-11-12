@@ -1,6 +1,6 @@
-import { eq, inArray } from "drizzle-orm";
+import { count, eq, inArray } from "drizzle-orm";
 import type { Db } from "./db/client";
-import { follows, postLikes, Post, User } from "./db/schema";
+import { follows, postComments, postLikes, Post, User } from "./db/schema";
 
 // API shapes match what the React app already uses (Mongo-era field names),
 // so the frontend didn't need to change when the database did.
@@ -62,6 +62,10 @@ export interface PostDto {
   desc: string;
   img?: string;
   likes: string[];
+  commentCount: number;
+  spoiler: boolean;
+  spoilerFor: string | null;
+  editedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,12 +78,22 @@ export async function postDtos(db: Db, rows: Post[]): Promise<PostDto[]> {
     .where(inArray(postLikes.postId, rows.map((p) => p.id)));
   const likes = new Map<string, string[]>();
   for (const l of likeRows) likes.set(l.postId, [...(likes.get(l.postId) || []), l.userId]);
+  const countRows = await db
+    .select({ postId: postComments.postId, n: count() })
+    .from(postComments)
+    .where(inArray(postComments.postId, rows.map((p) => p.id)))
+    .groupBy(postComments.postId);
+  const comments = new Map(countRows.map((r) => [r.postId, Number(r.n)]));
   return rows.map((p) => ({
     _id: p.id,
     userId: p.userId,
     desc: p.description,
     ...(p.imageKey ? { img: p.imageKey } : {}),
     likes: likes.get(p.id) || [],
+    commentCount: comments.get(p.id) ?? 0,
+    spoiler: p.spoiler,
+    spoilerFor: p.spoilerFor,
+    editedAt: p.editedAt,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   }));

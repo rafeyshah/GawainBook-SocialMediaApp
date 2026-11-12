@@ -10,6 +10,7 @@ import {
   comments,
   invitations,
   notifications,
+  postComments,
   posts,
   reports,
   threads,
@@ -762,22 +763,32 @@ export function circleRouter(limitPosting: RequestHandler = pass) {
       const { targetType, targetId } = req.body;
       const reason = req.body.reason;
       const details = String(req.body.details ?? "").trim();
-      if (!["thread", "comment", "post", "user"].includes(targetType)) throw new HttpError(400, "You can report a discussion, a reply, a post or a profile.");
+      if (!["thread", "comment", "post", "post_comment", "user"].includes(targetType)) throw new HttpError(400, "You can report a discussion, a reply, a post, a comment or a profile.");
       if (!["spoiler", "harassment", "spam", "other"].includes(reason)) throw new HttpError(400, "Choose a reason.");
       if (details.length > 500) throw new HttpError(400, "Details can be at most 500 characters.");
       // Posts and profiles live outside circles: their reports go to the site's admins.
-      if (targetType === "post" || targetType === "user") {
-        if (!isId(targetId)) throw new HttpError(404, targetType === "post" ? "Post not found." : "User not found.");
+      if (targetType === "post" || targetType === "user" || targetType === "post_comment") {
+        const missing = { post: "Post not found.", user: "User not found.", post_comment: "Comment not found." }[targetType as string]!;
+        if (!isId(targetId)) throw new HttpError(404, missing);
         const db = getDb();
         let authorId: string | undefined;
         if (targetType === "post") {
           const [p] = await db.select({ userId: posts.userId }).from(posts).where(eq(posts.id, targetId));
           authorId = p?.userId;
+        } else if (targetType === "post_comment") {
+          const [c] = await db
+            .select({ authorId: postComments.authorId, postOwner: posts.userId })
+            .from(postComments)
+            .innerJoin(posts, eq(posts.id, postComments.postId))
+            .where(eq(postComments.id, targetId));
+          // Hidden if the commenter or the post's owner is blocked either way.
+          if (c && (await blockedIds(me)).has(c.postOwner)) authorId = undefined;
+          else authorId = c?.authorId;
         } else {
           const [u] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, targetId), isNull(users.suspendedAt)));
           authorId = u?.id;
         }
-        if (!authorId || (await blockedIds(me)).has(authorId)) throw new HttpError(404, targetType === "post" ? "Post not found." : "User not found.");
+        if (!authorId || (await blockedIds(me)).has(authorId)) throw new HttpError(404, missing);
         if (authorId === me) throw new HttpError(400, "You can't report yourself.");
         const [r] = await db
           .insert(reports)

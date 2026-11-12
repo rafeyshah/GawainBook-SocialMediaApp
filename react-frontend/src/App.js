@@ -2,6 +2,7 @@ import Home from "./pages/home/Home";
 import CirclesHome from "./pages/circles/CirclesHome";
 import CirclePage from "./pages/circles/CirclePage";
 import ThreadPage from "./pages/circles/ThreadPage";
+import PostPage from "./pages/post/PostPage";
 import JoinPage from "./pages/circles/JoinPage";
 import BookPage from "./pages/books/BookPage";
 import Library from "./pages/books/Library";
@@ -72,6 +73,7 @@ function App() {
         <Route path="/books/:slug">{signedIn(<BookPage />)}</Route>
         <Route path="/library">{signedIn(<Library />)}</Route>
         <Route path="/feed">{signedIn(<Home />)}</Route>
+        <Route path="/posts/:id">{signedIn(<PostPage />)}</Route>
         <Route path="/login">{guestOnly(<Auth mode="login" />)}</Route>
         <Route path="/register">{guestOnly(<Auth mode="register" />)}</Route>
         <Route path="/profile/:username">{signedIn(<Profile />)}</Route>

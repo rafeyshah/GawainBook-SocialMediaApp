@@ -96,3 +96,29 @@
     margin-left: 0;
   }
 }
+
+/* Spoiler option (composer and post editor) */
+.spoilerFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.spoilerToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.spoilerToggle input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+.spoilerForInput {
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+}

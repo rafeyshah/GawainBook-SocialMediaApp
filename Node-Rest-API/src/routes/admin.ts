@@ -4,7 +4,7 @@
 import { NextFunction, Request, Response, Router } from "express";
 import { and, asc, count, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { getDb } from "../db/client";
-import { circles, posts, reports, users } from "../db/schema";
+import { circles, postComments, posts, reports, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
 import { endAllSessions, requireAuth } from "../auth";
 
@@ -19,7 +19,7 @@ const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
 
 const userFields = { _id: users.id, username: users.username, profilePicture: users.profilePicture };
 
-async function resolveReports(targetType: "post" | "user", targetId: string, by: string) {
+async function resolveReports(targetType: "post" | "post_comment" | "user", targetId: string, by: string) {
   await getDb()
     .update(reports)
     .set({ status: "hidden", resolvedBy: by, resolvedAt: new Date() })
@@ -65,6 +65,15 @@ export function adminRouter() {
         .orderBy(asc(reports.createdAt));
       const postIds = rows.filter((r) => r.targetType === "post").map((r) => r.targetId);
       const userIds = rows.filter((r) => r.targetType === "user").map((r) => r.targetId);
+      const commentIds = rows.filter((r) => r.targetType === "post_comment").map((r) => r.targetId);
+      const commentRows = commentIds.length
+        ? await db
+            .select({ _id: postComments.id, text: postComments.body, postId: postComments.postId, createdAt: postComments.createdAt, author: userFields })
+            .from(postComments)
+            .innerJoin(users, eq(users.id, postComments.authorId))
+            .where(inArray(postComments.id, commentIds))
+        : [];
+      const commentById = new Map(commentRows.map((c) => [c._id, c]));
       const postRows = postIds.length
         ? await db
             .select({ _id: posts.id, text: posts.description, image: posts.imageKey, createdAt: posts.createdAt, author: userFields })
@@ -82,7 +91,10 @@ export function adminRouter() {
       const userById = new Map(profileRows.map((u) => [u._id, u]));
       res.json(
         rows
-          .map((r) => ({ ...r, target: r.targetType === "post" ? postById.get(r.targetId) : userById.get(r.targetId) }))
+          .map((r) => ({
+            ...r,
+            target: r.targetType === "post" ? postById.get(r.targetId) : r.targetType === "post_comment" ? commentById.get(r.targetId) : userById.get(r.targetId),
+          }))
           // Content already removed: nothing left to review.
           .filter((r) => r.target)
       );
@@ -110,6 +122,17 @@ export function adminRouter() {
       const done = await getDb().delete(posts).where(eq(posts.id, req.params.id)).returning({ id: posts.id });
       if (done.length === 0) throw new HttpError(404, "Post not found.");
       await resolveReports("post", req.params.id, req.user!.id);
+      res.json({ deleted: true });
+    })
+  );
+
+  router.delete(
+    "/admin/post-comments/:id",
+    handle(async (req, res) => {
+      if (!isId(req.params.id)) throw new HttpError(404, "Comment not found.");
+      const done = await getDb().delete(postComments).where(eq(postComments.id, req.params.id)).returning({ id: postComments.id });
+      if (done.length === 0) throw new HttpError(404, "Comment not found.");
+      await resolveReports("post_comment", req.params.id, req.user!.id);
       res.json({ deleted: true });
     })
   );

@@ -15,7 +15,7 @@ import { csrfProtection, requireAuth } from "./auth";
 import { LegalConfig, legalConfig } from "./legal";
 import { authRouter } from "./routes/auth";
 import userRoute from "./routes/users";
-import postRoute from "./routes/posts";
+import { postCommentRouter, postRouter } from "./routes/posts";
 import { legalRouter, waitlistRouter } from "./routes/waitlist";
 import bookRoute from "./routes/books";
 import { circleRouter } from "./routes/circles";
@@ -170,7 +170,8 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api", accountRouter(mailer, limit.auth));
   app.use("/api", adminRouter());
   app.use("/api/users", userRoute);
-  app.use("/api/posts", postRoute);
+  app.use("/api/posts", postRouter(limit.posting));
+  app.use("/api", postCommentRouter(limit.posting));
   app.use("/api", bookSearchRouter(openLibrary));
   app.use("/api", bookRoute);
   app.use("/api", circleRouter(limit.posting));
