@@ -6,6 +6,7 @@
   <a href="https://gawainbook.onrender.com"><strong>Live demo</strong></a> ·
   <a href="#how-the-spoiler-lock-works">How it works</a> ·
   <a href="#screenshots">Screenshots</a> ·
+  <a href="#progress-so-far">Progress</a> ·
   <a href="#getting-started">Run locally</a> ·
   <a href="#api-reference">API</a> ·
   <a href="#roadmap">Roadmap</a> ·
@@ -67,12 +68,31 @@ The same check filters thread lists, single threads, replies, search and notific
 | <img src="docs/screenshots/discussion.png" alt="A chapter discussion with replies, edit, report and moderation actions" width="440"> | <img src="docs/screenshots/book.png" alt="Book page with a chapter map and the circles reading it" width="440"> |
 | **Profile and reading profile** | **Library: shelves and book search** |
 | <img src="docs/screenshots/profile.png" alt="Profile with avatar, reading profile (genres, language, pace) and posts" width="440"> | <img src="docs/screenshots/library.png" alt="Library with shelves and progress" width="440"> |
-| **Settings: password, data export, deletion** | **Dark mode** |
-| <img src="docs/screenshots/settings.png" alt="Settings page with email status, password change, data download and account deletion" width="440"> | <img src="docs/screenshots/circle-dark.png" alt="Circle page in dark mode" width="440"> |
-| **Sign-up with consent** | **On your phone** |
-| <img src="docs/screenshots/sign-up.png" alt="Create-account page with terms and age confirmation" width="440"> | <img src="docs/screenshots/mobile-circle.png" alt="Circle page on a phone" width="210"> <img src="docs/screenshots/mobile-discussion.png" alt="Discussion on a phone" width="210"> |
+| **Dark mode** | **Sign-in and sign-up** |
+| <img src="docs/screenshots/circle-dark.png" alt="Circle page in dark mode" width="440"> | <img src="docs/screenshots/sign-up.png" alt="Create-account page with terms and age confirmation" width="440"> |
+| **Feed** | **Comments on a post** |
+| <img src="docs/screenshots/feed.png" alt="Feed with posts, likes and comments from readers you follow" width="440"> | <img src="docs/screenshots/post-comments.png" alt="A post with its comment thread" width="440"> |
+| **Spoiler cover on posts** | **Settings: password, data export, deletion** |
+| <img src="docs/screenshots/spoiler.png" alt="A post marked as a spoiler for Persuasion, blurred until you choose to reveal it" width="440"> | <img src="docs/screenshots/settings.png" alt="Settings page with email status, password change, data download and account deletion" width="440"> |
+| **On your phone** | |
+| <img src="docs/screenshots/mobile-circle.png" alt="Circle page on a phone" width="210"> <img src="docs/screenshots/mobile-discussion.png" alt="Discussion on a phone" width="210"> | |
 
-<sub>Captured from a throwaway copy of the app with the demo data (sample readers use CC0 avatars). Regenerate them with [`e2e/scripts/readme-screenshots.js`](e2e/scripts/readme-screenshots.js).</sub>
+<sub>Captured on the live site with the labelled demo data (sample readers use CC0 avatars). Regenerate them with [`e2e/scripts/readme-screenshots.js`](e2e/scripts/readme-screenshots.js).</sub>
+
+## Progress so far
+
+GawainBook went from a tutorial-style MERN social app to a spoiler-safe reading-circle platform in three days of focused work (10–12 Nov 2026), following the [launch plan](docs/plan/GawainBook_Launch_Plan.md).
+
+| | Milestone | Highlights |
+| --- | --- | --- |
+| ✅ | **Foundation** (Week 1) | MongoDB → **Neon Postgres** with Drizzle migrations; **TypeScript** backend; photos in object storage; real **session auth** with CSRF and rate limits; CI on every push; nine written [decisions](docs/decisions/README.md); waitlist and legal pages; verified public-domain [book source](docs/corpus/pride-and-prejudice/SOURCE.md) |
+| ✅ | **Core circle journey** (Phase 1, the MVP) | Books, shelves and chapter progress; reading circles; **spoiler-locked discussions** enforced in one policy module; invite links; roles; in-circle search; notifications; reporting, blocking and moderation; reading profiles; Open Library book search; the full journey tested in a real browser |
+| ✅ | **Launch readiness** | Password reset and email confirmation; terms, privacy notice and age check at sign-up; data export and self-service deletion (GDPR); site-wide reports and an admin area; self-hosted fonts; public-domain avatars; link previews, favicon, manifest |
+| ✅ | **Social posts** | Edit and delete; comments with notifications; **spoiler cover** for posts; a page per post |
+| ⏳ | **Open the beta** | Switch on email (Resend), publish the Impressum, upgrade hosting, then invite the first circles ([launch readiness](docs/launch-readiness.md)) |
+| ⏳ | **Phase 2: reading assistant** | A spoiler-aware assistant for public-domain books that only knows what you've read |
+
+**By the numbers:** about 650 backend tests against a real PostgreSQL, about 470 frontend tests, 4 end-to-end browser journeys, 6 database migrations, 3 public-domain books, 12 labelled sample readers, 4 demo circles.
 
 ## Features
 
@@ -392,7 +412,7 @@ npm run test:e2e          # Playwright: the whole circle journey in a real brows
 - **Frontend:** Jest and React Testing Library, with real-browser checks of key flows against the live site.
 - **End to end:** [Playwright](e2e/tests/circle-journey.spec.js) drives two readers through the core promise: sign up, join with an invite link, set chapter 4, see chapters 1–4, find chapter 9 locked (in the list, by direct link, through the API and in search), reply, and get notified. It runs against a throwaway server with its own temporary database (`npm run build` in both apps first). `npm run test:e2e:live` runs it against the live site and deletes its test accounts afterwards.
 
-Current totals: **653 backend tests**, **468 frontend tests** and **4 end-to-end tests** (the circle journey; accounts and email; reporting and admin; posts, spoilers and comments), all passing.
+Current totals: **661 backend tests**, **468 frontend tests** and **4 end-to-end tests** (the circle journey; accounts and email; reporting and admin; posts, spoilers and comments), all passing.
 
 ## Deployment
 

@@ -85,18 +85,25 @@ export interface SeedUser {
   // (see SAMPLE-AVATARS.md there).
   photo?: string;
   city?: string;
+  // Reading profile shown on their profile page.
+  profile?: { genres: string[]; language: string; pace: number };
   // bookSlug → [shelf, chapter]
   reading: Record<string, ["want" | "reading" | "finished", number]>;
 }
 
 export const SAMPLE_USERS: SeedUser[] = [
-  { username: "elinor_reads", photo: "person/sample-elinor_reads.png", city: "Bath", reading: { "pride-and-prejudice": ["reading", 15], "the-wonderful-wizard-of-oz": ["want", 0] } },
-  { username: "darcy_fan", photo: "person/sample-darcy_fan.png", city: "Derbyshire", reading: { "pride-and-prejudice": ["finished", 61], "the-wonderful-wizard-of-oz": ["finished", 24] } },
-  { username: "marianne_b", photo: "person/sample-marianne_b.png", city: "Devon", reading: { "pride-and-prejudice": ["reading", 3] } },
-  { username: "lizzy_books", photo: "person/sample-lizzy_books.png", city: "Hertfordshire", reading: { "pride-and-prejudice": ["reading", 22], "persuasion": ["want", 0] } },
-  { username: "tinwoodsman", photo: "person/sample-tinwoodsman.png", city: "Kansas City", reading: { "the-wonderful-wizard-of-oz": ["reading", 12] } },
-  { username: "dorothy_g", photo: "person/sample-dorothy_g.png", city: "Kansas", reading: { "the-wonderful-wizard-of-oz": ["finished", 24], "pride-and-prejudice": ["reading", 6] } },
-  { username: "anne_elliot", photo: "person/sample-anne_elliot.png", city: "Lyme", reading: { "persuasion": ["reading", 5] } },
+  { username: "elinor_reads", photo: "person/sample-elinor_reads.png", city: "Bath", profile: { genres: ["Classics", "Romance", "Historical fiction"], language: "en", pace: 5 }, reading: { "pride-and-prejudice": ["reading", 15], "the-wonderful-wizard-of-oz": ["want", 0] } },
+  { username: "darcy_fan", photo: "person/sample-darcy_fan.png", city: "Derbyshire", profile: { genres: ["Classics", "Romance"], language: "en", pace: 10 }, reading: { "pride-and-prejudice": ["finished", 61], "the-wonderful-wizard-of-oz": ["finished", 24] } },
+  { username: "marianne_b", photo: "person/sample-marianne_b.png", city: "Devon", profile: { genres: ["Romance", "Poetry", "Classics"], language: "en", pace: 2 }, reading: { "pride-and-prejudice": ["reading", 3] } },
+  { username: "lizzy_books", photo: "person/sample-lizzy_books.png", city: "Hertfordshire", profile: { genres: ["Romance", "Romantasy", "Classics"], language: "en", pace: 6 }, reading: { "pride-and-prejudice": ["reading", 22], "persuasion": ["want", 0] } },
+  { username: "tinwoodsman", photo: "person/sample-tinwoodsman.png", city: "Kansas City", profile: { genres: ["Fantasy", "Children's classics"], language: "en", pace: 3 }, reading: { "the-wonderful-wizard-of-oz": ["reading", 12] } },
+  { username: "dorothy_g", photo: "person/sample-dorothy_g.png", city: "Kansas", profile: { genres: ["Fantasy", "Adventure", "Classics"], language: "en", pace: 4 }, reading: { "the-wonderful-wizard-of-oz": ["finished", 24], "pride-and-prejudice": ["reading", 6] } },
+  { username: "anne_elliot", photo: "person/sample-anne_elliot.png", city: "Lyme", profile: { genres: ["Classics", "Romance", "Literary fiction"], language: "en", pace: 7 }, reading: { "persuasion": ["reading", 5] } },
+  { username: "catherine_m", photo: "person/sample-catherine_m.png", city: "Northanger", profile: { genres: ["Gothic", "Mystery", "Romance"], language: "en", pace: 4 }, reading: { "pride-and-prejudice": ["reading", 9], "persuasion": ["want", 0] } },
+  { username: "wentworth_w", photo: "person/sample-wentworth_w.png", city: "Portsmouth", profile: { genres: ["Historical fiction", "Classics"], language: "en", pace: 8 }, reading: { "persuasion": ["reading", 12], "pride-and-prejudice": ["finished", 61] } },
+  { username: "emma_woodhouse", photo: "person/sample-emma_woodhouse.png", city: "Highbury", profile: { genres: ["Romance", "Contemporary", "Classics"], language: "de", pace: 6 }, reading: { "pride-and-prejudice": ["reading", 30], "persuasion": ["reading", 3] } },
+  { username: "scarecrow_thinks", photo: "person/sample-scarecrow_thinks.png", city: "Munchkin Country", profile: { genres: ["Fantasy", "Philosophy"], language: "en", pace: 2 }, reading: { "the-wonderful-wizard-of-oz": ["reading", 8] } },
+  { username: "ozma_reads", photo: "person/sample-ozma_reads.png", city: "Emerald City", profile: { genres: ["Fantasy", "Romantasy", "Adventure"], language: "en", pace: 12 }, reading: { "the-wonderful-wizard-of-oz": ["finished", 24], "persuasion": ["want", 0] } },
 ];
 
 // Real accounts passed with --member get this reading state, so a signed-in
@@ -144,7 +151,7 @@ export const CIRCLES: SeedCircle[] = [
     visibility: "public",
     schedule: "About 5 chapters a week · check-in on Sundays",
     owner: "elinor_reads",
-    members: ["darcy_fan", "marianne_b", "lizzy_books", "dorothy_g"],
+    members: ["darcy_fan", "marianne_b", "lizzy_books", "dorothy_g", "catherine_m", "emma_woodhouse"],
     moderators: ["darcy_fan"],
     includeRealMembers: true,
     threads: [
@@ -268,7 +275,7 @@ export const CIRCLES: SeedCircle[] = [
     visibility: "public",
     schedule: "3 chapters a week · Friday chat",
     owner: "tinwoodsman",
-    members: ["dorothy_g", "darcy_fan"],
+    members: ["dorothy_g", "darcy_fan", "scarecrow_thinks", "ozma_reads"],
     includeRealMembers: true,
     threads: [
       {
@@ -340,7 +347,7 @@ export const CIRCLES: SeedCircle[] = [
     visibility: "public",
     schedule: "1 chapter a day",
     owner: "anne_elliot",
-    members: ["lizzy_books"],
+    members: ["lizzy_books", "wentworth_w", "emma_woodhouse"],
     includeRealMembers: false,
     threads: [
       {
@@ -355,12 +362,117 @@ export const CIRCLES: SeedCircle[] = [
   },
 ];
 
-// A few feed posts so the Feed tab isn't empty.
-export const POSTS: { author: string; desc: string; hoursAgo: number }[] = [
-  { author: "elinor_reads", desc: "Started a Pride and Prejudice circle this week. Discussions unlock as you read, so no spoilers! 📚", hoursAgo: 150 },
-  { author: "tinwoodsman", desc: "Re-reading Oz as an adult: the chapter titles alone are a joy. 'The Queen of the Field Mice'!", hoursAgo: 80 },
-  { author: "darcy_fan", desc: "Finished Pride and Prejudice again. It gets better every time.", hoursAgo: 26 },
+export interface SeedPost {
+  author: string;
+  desc: string;
+  hoursAgo: number;
+  spoiler?: boolean;
+  spoilerFor?: string;
+  likes?: string[];
+  comments?: SeedComment[];
+}
+
+// Feed posts, with likes and comment threads, so the Feed feels alive.
+export const POSTS: SeedPost[] = [
+  {
+    author: "elinor_reads",
+    desc: "Started a Pride and Prejudice circle this week. Discussions unlock as you read, so no spoilers! 📚",
+    hoursAgo: 150,
+    likes: ["darcy_fan", "lizzy_books", "marianne_b", "catherine_m"],
+    comments: [
+      { author: "marianne_b", body: "Joined! I'm a slow reader, so the chapter locks are exactly what I needed." },
+      { author: "elinor_reads", body: "Take your time, that's the whole point 💛" },
+    ],
+  },
+  {
+    author: "tinwoodsman",
+    desc: "Re-reading Oz as an adult: the chapter titles alone are a joy. 'The Queen of the Field Mice'!",
+    hoursAgo: 80,
+    likes: ["dorothy_g", "ozma_reads", "scarecrow_thinks"],
+    comments: [{ author: "scarecrow_thinks", body: "'The Journey to the Great Oz' is my favourite. Very sensible of them to walk." }],
+  },
+  {
+    author: "darcy_fan",
+    desc: "Finished Pride and Prejudice again. It gets better every time.",
+    hoursAgo: 26,
+    likes: ["elinor_reads", "lizzy_books", "wentworth_w"],
+  },
+  {
+    author: "lizzy_books",
+    desc: "Annotating my copy with three colours: pink for swoon, yellow for wit, green for 'Mrs Bennet, please'. 🖍️",
+    hoursAgo: 60,
+    likes: ["elinor_reads", "emma_woodhouse", "catherine_m", "marianne_b", "darcy_fan"],
+    comments: [
+      { author: "emma_woodhouse", body: "I need a fourth colour for Mr Collins." },
+      { author: "lizzy_books", body: "Orange. Orange is for Mr Collins." },
+      { author: "catherine_m", body: "Stealing this system for my next read." },
+    ],
+  },
+  {
+    author: "anne_elliot",
+    desc: "Persuasion Slow Read starts this Sunday: one chapter a day, coffee optional. Anyone joining?",
+    hoursAgo: 44,
+    likes: ["wentworth_w", "emma_woodhouse", "lizzy_books"],
+    comments: [
+      { author: "wentworth_w", body: "Count me in. Bringing tea instead of coffee." },
+      { author: "emma_woodhouse", body: "Ich bin dabei! Reading it in English for the first time." },
+    ],
+  },
+  {
+    author: "wentworth_w",
+    desc: "That letter. You know the one. I'm not okay.",
+    hoursAgo: 20,
+    spoiler: true,
+    spoilerFor: "Persuasion",
+    likes: ["anne_elliot", "darcy_fan"],
+    comments: [{ author: "anne_elliot", body: "Half agony, half hope. Every single time." }],
+  },
+  {
+    author: "catherine_m",
+    desc: "Rainy afternoon, a pot of tea and Pride and Prejudice chapter 9. Mrs Bennet is unstoppable today ☕🌧️",
+    hoursAgo: 14,
+    likes: ["elinor_reads", "marianne_b", "lizzy_books", "dorothy_g"],
+    comments: [{ author: "marianne_b", body: "The best kind of afternoon." }],
+  },
+  {
+    author: "ozma_reads",
+    desc: "Hot take: the Tin Woodman is the most romantic character in Oz. He wanted a heart so he could love again. 💚",
+    hoursAgo: 9,
+    likes: ["tinwoodsman", "dorothy_g", "scarecrow_thinks", "lizzy_books"],
+    comments: [
+      { author: "tinwoodsman", body: "As a tin man, I agree." },
+      { author: "dorothy_g", body: "Not a hot take, just correct." },
+    ],
+  },
+  {
+    author: "emma_woodhouse",
+    desc: "Book-club tip: we end every meeting by picking one line we'd frame. This week: 'I declare after all there is no enjoyment like reading!'",
+    hoursAgo: 5,
+    likes: ["elinor_reads", "lizzy_books", "anne_elliot", "catherine_m", "darcy_fan", "marianne_b"],
+    comments: [{ author: "elinor_reads", body: "Adding this to our circle right now." }],
+  },
+  {
+    author: "marianne_b",
+    desc: "Only on chapter 3 and already arguing with Mr Darcy in the margins.",
+    hoursAgo: 2,
+    likes: ["darcy_fan", "lizzy_books"],
+    comments: [{ author: "darcy_fan", body: "He gets better. Promise. (No spoilers!)" }],
+  },
 ];
 
 // Real accounts passed with --member follow these sample readers.
 export const FOLLOWS_FOR_MEMBERS = ["elinor_reads", "tinwoodsman", "darcy_fan"];
+
+// Who follows whom among the sample readers, so everyone's feed has posts.
+export const SAMPLE_FOLLOWS: [string, string][] = [
+  ["elinor_reads", "darcy_fan"], ["elinor_reads", "lizzy_books"], ["elinor_reads", "emma_woodhouse"], ["elinor_reads", "catherine_m"], ["elinor_reads", "marianne_b"], ["elinor_reads", "anne_elliot"],
+  ["darcy_fan", "elinor_reads"], ["darcy_fan", "lizzy_books"], ["darcy_fan", "wentworth_w"], ["darcy_fan", "marianne_b"],
+  ["lizzy_books", "elinor_reads"], ["lizzy_books", "darcy_fan"], ["lizzy_books", "emma_woodhouse"], ["lizzy_books", "ozma_reads"],
+  ["marianne_b", "elinor_reads"], ["marianne_b", "lizzy_books"], ["marianne_b", "catherine_m"],
+  ["anne_elliot", "wentworth_w"], ["anne_elliot", "emma_woodhouse"], ["wentworth_w", "anne_elliot"], ["wentworth_w", "darcy_fan"],
+  ["emma_woodhouse", "elinor_reads"], ["emma_woodhouse", "lizzy_books"], ["emma_woodhouse", "anne_elliot"],
+  ["catherine_m", "elinor_reads"], ["catherine_m", "lizzy_books"], ["catherine_m", "marianne_b"],
+  ["tinwoodsman", "dorothy_g"], ["tinwoodsman", "ozma_reads"], ["tinwoodsman", "scarecrow_thinks"],
+  ["dorothy_g", "tinwoodsman"], ["dorothy_g", "ozma_reads"], ["dorothy_g", "elinor_reads"],
+  ["scarecrow_thinks", "tinwoodsman"], ["scarecrow_thinks", "dorothy_g"], ["ozma_reads", "tinwoodsman"], ["ozma_reads", "dorothy_g"], ["ozma_reads", "lizzy_books"],
+];

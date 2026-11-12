@@ -7,7 +7,8 @@ const fs = require("fs");
 const path = require("path");
 const [base, outDir] = process.argv.slice(2);
 const SHOWN_HOST = "gawainbook.onrender.com";
-const PASSWORD = "sample-password";
+// The sample readers' password (the seed's --password, or the e2e server's default).
+const PASSWORD = process.env.SAMPLE_PASSWORD || "sample-password";
 fs.mkdirSync(outDir, { recursive: true });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -89,10 +90,18 @@ async function frame(browser, buf, opts, file) {
   const circle = await el.$$eval("a[href^='/circles/']", (as) => as.find((a) => a.textContent.includes("Netherfield")).getAttribute("href"));
   await el.goto(base + circle, { waitUntil: "networkidle" });
   const thread = await el.$$eval("a[href^='/threads/']", (as) => as.find((a) => a.textContent.includes("Charlotte")).getAttribute("href"));
-  await api(darcy, "POST", `${thread}/comments`, { body: "Practical, yes, but she knew exactly what she was choosing. I respect her more on a reread." });
+  const reply = "Practical, yes, but she knew exactly what she was choosing. I respect her more on a reread.";
+  const existing = await api(darcy, "GET", thread);
+  if (!existing.comments?.some((c) => c.body === reply)) await api(darcy, "POST", `${thread}/comments`, { body: reply });
   const me = await api(el, "GET", "/auth/me");
-  await api(el, "PUT", `/users/${me._id}`, { favoriteGenres: ["Classics", "Romance", "Historical fiction"], readingLanguage: "en", pace: 5 });
-  await api(el, "POST", `${circle}/invitations`, { expiresInDays: 7, maxUses: 10 });
+  void me;
+  // Show one active invite link in the Organise panel (reuse one if it exists).
+  const links = await api(el, "GET", `${circle}/invitations`);
+  if (!Array.isArray(links) || links.length === 0) await api(el, "POST", `${circle}/invitations`, { expiresInDays: 7, maxUses: 10 });
+
+  // A post with a comment thread, and the spoiler post.
+  const lizzyPosts = await api(el, "GET", "/posts/profile/lizzy_books");
+  const annotated = lizzyPosts.find((p) => /three colours/.test(p.desc)) || lizzyPosts[0];
 
   const capture = async (page, url, { theme = "light", ready, action } = {}) => {
     await page.goto(base + url, { waitUntil: "networkidle" });
@@ -114,6 +123,9 @@ async function frame(browser, buf, opts, file) {
     ["library.png", "/library", { ready: ".libraryGrid" }],
     ["profile.png", "/profile/elinor_reads", { ready: ".factList" }],
     ["settings.png", "/settings", { ready: "form[aria-label='Change password']" }],
+    ["feed.png", "/feed", { ready: "article.post" }],
+    ["post-comments.png", `/posts/${annotated._id}`, { ready: ".postCommentList" }],
+    ["spoiler.png", "/profile/wentworth_w", { ready: ".spoilerReveal" }],
   ];
   for (const [file, url, opts] of shots) {
     const buf = await capture(el, url, opts);

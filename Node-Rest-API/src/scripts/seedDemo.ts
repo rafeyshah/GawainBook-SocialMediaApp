@@ -36,7 +36,7 @@ async function main() {
   const members = (arg("member") || "").split(",").map((s) => s.trim()).filter(Boolean);
   const s = await seedDemo(db, { password, members });
   console.log(
-    `Seeded ${s.books} books, ${s.sampleUsers} sample accounts, ${s.circles} circles, ${s.threads} discussions, ${s.comments} replies.`
+    `Seeded ${s.books} books, ${s.sampleUsers} sample accounts, ${s.circles} circles, ${s.threads} discussions, ${s.comments} replies, ${s.posts} posts, ${s.postComments} post comments.`
   );
   if (s.realMembers.length) console.log(`Added to the sample circles: ${s.realMembers.join(", ")}`);
   if (!arg("password") && !process.env.SEED_PASSWORD) {

@@ -2,7 +2,7 @@ import { TERMS_VERSION } from "../legal";
 import bcrypt from "bcryptjs";
 import { and, eq, inArray, like } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { books, chapters, circleMembers, circles, comments, follows, posts, threads, userBooks, users } from "../db/schema";
+import { books, chapters, circleMembers, circles, comments, follows, postComments, postLikes, posts, threads, userBooks, users } from "../db/schema";
 import {
   BOOKS,
   CIRCLES,
@@ -10,6 +10,7 @@ import {
   MEMBER_READING,
   POSTS,
   SAMPLE_BIO,
+  SAMPLE_FOLLOWS,
   SAMPLE_EMAIL_DOMAIN,
   SAMPLE_USERS,
   SeedUser,
@@ -18,6 +19,8 @@ import {
 
 // Sample accounts count as verified and as having accepted the current terms.
 const sampleConsent = () => ({ emailVerifiedAt: new Date(), termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION });
+const sampleProfile = (u: SeedUser) =>
+  u.profile ? { favoriteGenres: u.profile.genres, readingLanguage: u.profile.language, pace: u.profile.pace } : {};
 
 export const sampleEmail = (username: string) => `${username}@${SAMPLE_EMAIL_DOMAIN}`;
 const hoursAgo = (h: number, now: Date) => new Date(now.getTime() - h * 3600_000);
@@ -28,6 +31,8 @@ export interface SeedSummary {
   circles: number;
   threads: number;
   comments: number;
+  posts: number;
+  postComments: number;
   realMembers: string[];
 }
 
@@ -78,7 +83,7 @@ export async function seedDemo(
       const [row] = existing
         ? await tx
             .update(users)
-            .set({ passwordHash, bio: SAMPLE_BIO, city: u.city ?? null, profilePicture: u.photo ?? "", ...sampleConsent() })
+            .set({ passwordHash, bio: SAMPLE_BIO, city: u.city ?? null, profilePicture: u.photo ?? "", ...sampleConsent(), ...sampleProfile(u) })
             .where(eq(users.id, existing.id))
             .returning()
         : await tx
@@ -91,6 +96,7 @@ export async function seedDemo(
               city: u.city ?? null,
               profilePicture: u.photo ?? "",
               ...sampleConsent(),
+              ...sampleProfile(u),
             })
             .returning();
       userId.set(u.username, row.id);
@@ -174,11 +180,36 @@ export async function seedDemo(
       }
     }
 
-    // Feed posts and follows.
+    // Feed posts, likes and comments (matched by text, so re-runs don't duplicate).
+    let postCommentCount = 0;
     for (const p of POSTS) {
       const authorId = userId.get(p.author)!;
-      const [exists] = await tx.select({ id: posts.id }).from(posts).where(and(eq(posts.userId, authorId), eq(posts.description, p.desc)));
-      if (!exists) await tx.insert(posts).values({ userId: authorId, description: p.desc, createdAt: hoursAgo(p.hoursAgo, now) });
+      let [post] = await tx.select({ id: posts.id }).from(posts).where(and(eq(posts.userId, authorId), eq(posts.description, p.desc)));
+      if (!post) {
+        [post] = await tx
+          .insert(posts)
+          .values({ userId: authorId, description: p.desc, spoiler: Boolean(p.spoiler), spoilerFor: p.spoilerFor ?? null, createdAt: hoursAgo(p.hoursAgo, now) })
+          .returning({ id: posts.id });
+      }
+      for (const liker of p.likes ?? []) {
+        await tx.insert(postLikes).values({ postId: post.id, userId: userId.get(liker)! }).onConflictDoNothing();
+      }
+      for (const [i, cm] of (p.comments ?? []).entries()) {
+        const commenter = userId.get(cm.author)!;
+        const [exists] = await tx
+          .select({ id: postComments.id })
+          .from(postComments)
+          .where(and(eq(postComments.postId, post.id), eq(postComments.authorId, commenter), eq(postComments.body, cm.body)));
+        if (!exists) {
+          // Spread replies out after the post, oldest first.
+          const at = hoursAgo(Math.max(0.1, p.hoursAgo - (i + 1) * Math.min(1.5, p.hoursAgo / ((p.comments?.length ?? 1) + 1))), now);
+          await tx.insert(postComments).values({ postId: post.id, authorId: commenter, body: cm.body, createdAt: at });
+        }
+        postCommentCount++;
+      }
+    }
+    for (const [follower, following] of SAMPLE_FOLLOWS) {
+      await tx.insert(follows).values({ followerId: userId.get(follower)!, followingId: userId.get(following)! }).onConflictDoNothing();
     }
     for (const name of realMembers) {
       for (const target of FOLLOWS_FOR_MEMBERS) {
@@ -192,6 +223,8 @@ export async function seedDemo(
       circles: CIRCLES.length,
       threads: threadCount,
       comments: commentCount,
+      posts: POSTS.length,
+      postComments: postCommentCount,
       realMembers,
     };
   });
