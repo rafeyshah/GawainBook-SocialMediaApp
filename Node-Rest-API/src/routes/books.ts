@@ -1,7 +1,7 @@
 import { RequestHandler, Router } from "express";
 import { and, asc, count, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "../db/client";
-import { books, chapters, circleMembers, circles, userBooks, users } from "../db/schema";
+import { books, chapters, circleMembers, circles, threads, userBooks, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
 import { requireAuth } from "../auth";
 import { OpenLibrary, WORK_KEY } from "../openLibrary";
@@ -99,9 +99,13 @@ router.get(
       subjects: book.subjects,
       pageCount: book.pageCount,
       chaptersSetByReader: Boolean(book.chaptersSetBy),
-      // Chapters can be set by a reader who has the book on a shelf, while it
-      // has none, or while the reader-set ones aren't used by any circle yet.
-      canSetChapters: Boolean(mine) && (chapterRows.length === 0 || (Boolean(book.chaptersSetBy) && circleRows.length === 0)),
+      gutenbergId: book.gutenbergId,
+      minChapterCount: chapterRows.length && circleRows.length ? await lowestAllowedCount(book.id) : 1,
+      // Put back Gutenberg's list after a reader changed it.
+      canRestoreChapters: Boolean(book.gutenbergId) && Boolean(book.chaptersSetBy),
+      // Readers with the book on a shelf can set or correct its chapters,
+      // except on books whose list we curated ourselves.
+      canSetChapters: chapterRows.length === 0 || chaptersEditable(book),
       sourceNote: book.sourceNote,
       chapters: chapterRows,
       chapterCount: chapterRows.length ? chapterRows[chapterRows.length - 1].seq : 0,
@@ -215,6 +219,33 @@ export const slugify = (title: string) =>
 const pass: RequestHandler = (req, res, next) => next();
 
 export const MAX_CHAPTERS = 200;
+
+// Books whose chapter list we curated ourselves (the demo books) are locked.
+// Lists that came from Gutenberg or from a reader can be corrected.
+export const chaptersEditable = (book: typeof books.$inferSelect) => Boolean(book.olWorkId || book.chaptersSetBy);
+
+// The fewest chapters a book can have without breaking a circle: every
+// discussion is about a chapter, and that chapter has to stay.
+export async function lowestAllowedCount(bookId: string): Promise<number> {
+  const [row] = await getDb()
+    .select({ n: sql<number>`coalesce(max(${threads.chapterSeq}), 0)::int` })
+    .from(threads)
+    .innerJoin(circles, eq(circles.id, threads.circleId))
+    .where(eq(circles.bookId, bookId));
+  return Math.max(1, row.n);
+}
+
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+// Replaces a book's chapters and keeps every reader's progress inside the book.
+async function replaceChapters(tx: Tx, bookId: string, list: { seq: number; title: string }[]) {
+  const count = list.length;
+  await tx.delete(chapters).where(eq(chapters.bookId, bookId));
+  await tx.insert(chapters).values(list.map((c) => ({ bookId, seq: c.seq, title: c.title })));
+  // Nobody can be past the last chapter; finished readers end on it.
+  await tx.update(userBooks).set({ chapterSeq: sql`least(${userBooks.chapterSeq}, ${count})` }).where(eq(userBooks.bookId, bookId));
+  await tx.update(userBooks).set({ chapterSeq: count }).where(and(eq(userBooks.bookId, bookId), eq(userBooks.shelf, "finished")));
+}
 
 // Fill in a book's Open Library details (description, subjects, pages) once.
 // Best effort: if Open Library is down, try again next time.
@@ -351,26 +382,62 @@ export function bookSearchRouter(openLibrary: OpenLibrary, limitPosting: Request
       }
       const db = getDb();
       const me = req.user!.id;
-      const [mine] = await db.select().from(userBooks).where(and(eq(userBooks.userId, me), eq(userBooks.bookId, book.id)));
-      if (!mine) throw new HttpError(403, "Add the book to one of your shelves first.");
-      const existing = (await chapterCounts([book.id])).get(book.id) ?? 0;
-      if (existing > 0) {
-        if (!book.chaptersSetBy) throw new HttpError(409, "This book's chapters come from its source and can't be changed.");
-        const [used] = await db.select({ id: circles.id }).from(circles).where(eq(circles.bookId, book.id)).limit(1);
-        if (used) throw new HttpError(409, "A circle is already reading this book, so its chapters can't change.");
+
+      const current = await db
+        .select({ seq: chapters.seq, title: chapters.title })
+        .from(chapters)
+        .where(eq(chapters.bookId, book.id))
+        .orderBy(asc(chapters.seq));
+      if (current.length > 0 && !chaptersEditable(book)) {
+        throw new HttpError(409, "This book's chapter list was checked by us and can't be changed.");
       }
+      const lowest = current.length ? await lowestAllowedCount(book.id) : 1;
+      if (count < lowest) {
+        throw new HttpError(409, `A circle has a discussion about chapter ${lowest}, so this book needs at least ${lowest} chapters.`);
+      }
+      // Keep the titles we have (e.g. "The Cyclone"); new chapters get a number.
+      const titleOf = new Map(current.map((c) => [c.seq, c.title]));
+      const list = Array.from({ length: count }, (_, i) => ({ seq: i + 1, title: titleOf.get(i + 1) ?? `Chapter ${i + 1}` }));
       await db.transaction(async (tx) => {
-        await tx.delete(chapters).where(eq(chapters.bookId, book.id));
-        await tx.insert(chapters).values(Array.from({ length: count }, (_, i) => ({ bookId: book.id, seq: i + 1, title: `Chapter ${i + 1}` })));
+        await replaceChapters(tx, book.id, list);
         await tx.update(books).set({ chaptersSetBy: me }).where(eq(books.id, book.id));
-        // Nobody can be past the last chapter; finished readers end on it.
-        await tx
-          .update(userBooks)
-          .set({ chapterSeq: sql`least(${userBooks.chapterSeq}, ${count})` })
-          .where(eq(userBooks.bookId, book.id));
-        await tx.update(userBooks).set({ chapterSeq: count }).where(and(eq(userBooks.bookId, book.id), eq(userBooks.shelf, "finished")));
+        // Setting up a book's chapters means you're interested: it goes on Want to read
+        // if it isn't on one of your shelves yet.
+        await tx.insert(userBooks).values({ userId: me, bookId: book.id, shelf: "want", chapterSeq: 0 }).onConflictDoNothing();
       });
       res.json({ chapterCount: count, chaptersSetByReader: true });
+    })
+  );
+
+  // Put back Project Gutenberg's chapter list after a reader changed it.
+  search.post(
+    "/books/:idOrSlug/chapters/restore",
+    requireAuth,
+    limitPosting,
+    handle(async (req, res) => {
+      const book = await findBook(req.params.idOrSlug);
+      if (!book) throw new HttpError(404, "Book not found.");
+      const db = getDb();
+      const me = req.user!.id;
+      if (!book.gutenbergId) throw new HttpError(404, "This book has no chapter list from Project Gutenberg.");
+      if (!book.chaptersSetBy) throw new HttpError(409, "It already uses Project Gutenberg's chapter list.");
+      let list;
+      try {
+        list = await gutenberg.chapters(book.gutenbergId);
+      } catch {
+        throw new HttpError(502, "Project Gutenberg isn't answering right now. Please try again in a minute.");
+      }
+      if (!list) throw new HttpError(404, "Project Gutenberg's chapter list isn't available any more.");
+      const lowest = await lowestAllowedCount(book.id);
+      if (list.length < lowest) {
+        throw new HttpError(409, `A circle has a discussion about chapter ${lowest}, but Gutenberg's list has only ${list.length} chapters.`);
+      }
+      await db.transaction(async (tx) => {
+        await replaceChapters(tx, book.id, list!);
+        await tx.update(books).set({ chaptersSetBy: null }).where(eq(books.id, book.id));
+        await tx.insert(userBooks).values({ userId: me, bookId: book.id, shelf: "want", chapterSeq: 0 }).onConflictDoNothing();
+      });
+      res.json({ chapterCount: list.length, chaptersSetByReader: false });
     })
   );
 

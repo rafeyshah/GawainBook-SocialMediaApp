@@ -18,7 +18,8 @@ export function ChapterSetup({ book, onSaved, correcting = false, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const n = Number(count);
-  const valid = Number.isInteger(n) && n >= 1 && n <= MAX_CHAPTERS;
+  const min = correcting ? book.minChapterCount || 1 : 1;
+  const valid = Number.isInteger(n) && n >= min && n <= MAX_CHAPTERS;
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -35,10 +36,14 @@ export function ChapterSetup({ book, onSaved, correcting = false, onCancel }) {
     <form className="chapterSetup" onSubmit={submit} aria-label="Set up chapters">
       <label className="field">
         How many chapters does your edition have?
-        <input className="input" type="number" inputMode="numeric" min={1} max={MAX_CHAPTERS} step={1} value={count} onChange={(e) => setCount(e.target.value)} placeholder="e.g. 31" />
+        <input className="input" type="number" inputMode="numeric" min={min} max={MAX_CHAPTERS} step={1} value={count} onChange={(e) => setCount(e.target.value)} placeholder="e.g. 31" />
       </label>
       <p className="sourceNote">
-        This turns on chapter-by-chapter progress and lets circles read the book. You can correct it until a circle starts reading.
+        {correcting
+          ? "Chapter titles you already have are kept. Anyone further along than the new last chapter is moved back to it."
+          : "This turns on chapter-by-chapter progress and lets circles read the book. You can correct it later if it's wrong."}
+        {min > 1 && ` A circle has a discussion about chapter ${min}, so it needs at least ${min}.`}
+        {!book.shelf && " Saving also adds this book to your Want to read shelf."}
       </p>
       {error && (
         <div className="errorBox" role="alert">
@@ -105,7 +110,20 @@ export default function BookPage() {
     setError("");
     try {
       const res = await axios.delete(`/books/${book._id}/progress`);
-      setBook((b) => ({ ...b, ...res.data, canSetChapters: false }));
+      setBook((b) => ({ ...b, ...res.data }));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const restoreChapters = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await axios.post(`/books/${book._id}/chapters/restore`);
+      await load();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -205,7 +223,7 @@ export default function BookPage() {
               {book.canSetChapters ? (
                 <ChapterSetup book={book} onSaved={reload} />
               ) : (
-                <>Add this book to one of your shelves to set up its chapters. Until then, circles can't read it.</>
+                <>Sign in to set up its chapters. Until then, circles can't read it.</>
               )}
               {book.olWorkId && (
                 <>
@@ -243,12 +261,21 @@ export default function BookPage() {
               <span className="current">You're here</span>
               <span>Ahead</span>
             </div>
-            {book.chaptersSetByReader && book.canSetChapters && !correcting && (
+            {book.canSetChapters && !correcting && (
               <p className="sourceNote" style={{ marginBottom: 0 }}>
-                Chapters were added by a reader.{" "}
+                {book.chaptersSetByReader ? "Chapters were added by a reader. " : ""}
+                Wrong number of chapters?{" "}
                 <button type="button" className="linkBtn" onClick={() => setCorrecting(true)}>
-                  Correct the count
+                  Change it
                 </button>
+                {book.canRestoreChapters && (
+                  <>
+                    {" · "}
+                    <button type="button" className="linkBtn" onClick={restoreChapters} disabled={saving}>
+                      Use Project Gutenberg's chapter list
+                    </button>
+                  </>
+                )}
               </p>
             )}
             {correcting && <ChapterSetup book={book} correcting onSaved={reload} onCancel={() => setCorrecting(false)} />}

@@ -1,0 +1,5 @@
+Database migrations applied
+Image storage: Neon object storage
+listening on localhost: 8800
+::1 - - [13/Nov/2026:15:16:20 +0000] "GET /api/version HTTP/1.1" 404 22
+::1 - - [13/Nov/2026:15:16:25 +0000] "GET /api/health HTTP/1.1" 200 77

@@ -50,6 +50,17 @@ test("find a book on Open Library, add it to Want to read, then move it to Readi
   await expect(page.getByRole("form", { name: "Set up chapters" })).toHaveCount(0);
   await page.getByLabel(/Chapter you've reached/).selectOption("5");
   await expect(page.getByText("Chapter 5 of 31").first()).toBeVisible();
+
+  // Change the count by mistake, then put Gutenberg's list back.
+  await page.getByRole("button", { name: "Change it" }).click();
+  const fix = page.getByRole("form", { name: "Set up chapters" });
+  await fix.getByLabel(/How many chapters/).fill("12");
+  await fix.getByRole("button", { name: "Save chapters" }).click();
+  await expect(page.getByRole("list", { name: "12 chapters" })).toBeVisible();
+  await expect(page.getByText(/Chapters were added by a reader/)).toBeVisible();
+  await page.getByRole("button", { name: "Use Project Gutenberg's chapter list" }).click();
+  await expect(page.getByRole("list", { name: "31 chapters" })).toBeVisible();
+  await expect(page.getByText("Chapter 5 of 31").first()).toBeVisible();
   const bookUrl = page.url();
 
   // Searching again shows it as one of ours, already on the Reading shelf.

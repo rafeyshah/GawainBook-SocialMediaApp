@@ -101,7 +101,8 @@ describe("adding a public-domain book gives it its real chapters", () => {
     expect(page.chapters[0]).toEqual({ seq: 1, title: "The Cyclone" });
     expect(page.chapters[23]).toEqual({ seq: 24, title: "Home Again" });
     expect(page.sourceNote).toMatch(/Project Gutenberg eBook #55/);
-    expect(page).toMatchObject({ chaptersSetByReader: false, canSetChapters: false });
+    // From Gutenberg, but still correctable by a reader with it on a shelf.
+    expect(page).toMatchObject({ chaptersSetByReader: false, canSetChapters: true, canRestoreChapters: false, gutenbergId: 55 });
     expect((await c.put(`/api/books/${body.book._id}/progress`, { chapter: 9 })).body).toMatchObject({ chapter: 9, chapterCount: 24 });
     // A circle can read it straight away.
     expect((await c.post("/api/circles", { name: "Yellow brick", bookId: body.book._id })).status).toBe(201);

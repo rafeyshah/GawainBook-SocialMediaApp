@@ -265,7 +265,7 @@ describe("removing books and book details", () => {
     routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ chaptersSetByReader: true, canSetChapters: true }) });
     axios.post.mockRejectedValueOnce(httpError(409, { error: "A circle is already reading this book, so its chapters can't change." }));
     renderBook();
-    userEvent.click(await screen.findByRole("button", { name: "Correct the count" }));
+    userEvent.click(await screen.findByRole("button", { name: "Change it" }));
     const form = screen.getByRole("form", { name: "Set up chapters" });
     expect(within(form).getByLabelText(/How many chapters/)).toHaveValue(61);
     userEvent.click(within(form).getByRole("button", { name: "Save chapters" }));
@@ -277,7 +277,7 @@ describe("removing books and book details", () => {
   test("not on a shelf: explains how to set up chapters instead of the form", async () => {
     routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ chapters: [], chapterCount: 0, shelf: null, canSetChapters: false, circles: [] }) });
     renderBook();
-    expect(await screen.findByText(/Add this book to one of your shelves to set up its chapters/)).toBeInTheDocument();
+    expect(await screen.findByText(/Sign in to set up its chapters/)).toBeInTheDocument();
     expect(screen.queryByRole("form", { name: "Set up chapters" })).toBeNull();
   });
 });
@@ -298,4 +298,85 @@ test("Library: Remove takes a book off your shelf and reloads", async () => {
   userEvent.click(within(panel).getByRole("button", { name: "Remove Pride and Prejudice from your shelves" }));
   await waitFor(() => expect(within(screen.getByRole("tabpanel", { name: "Reading" })).queryByText("Pride and Prejudice")).toBeNull());
   expect(axios.delete).toHaveBeenCalledWith("/books/b1/progress");
+});
+
+
+describe("changing a chapter list later", () => {
+  const renderBook = () => renderWithAuth(<BookPage />, { route: "/books/pride-and-prejudice", path: "/books/:slug" });
+
+  test("not on a shelf: Change it is still there, and the form says saving adds it to Want to read", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ shelf: null, canSetChapters: true }) });
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Change it" }));
+    expect(screen.getByRole("form", { name: "Set up chapters" })).toHaveTextContent("Saving also adds this book to your Want to read shelf");
+  });
+
+  test("on a shelf already: no Want to read note", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ shelf: "reading", canSetChapters: true }) });
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Change it" }));
+    expect(screen.getByRole("form", { name: "Set up chapters" })).not.toHaveTextContent("Want to read shelf");
+  });
+
+  test("no chapters and not on a shelf: the setup form shows straight away, with the note", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ chapters: [], chapterCount: 0, shelf: null, canSetChapters: true, circles: [] }) });
+    renderBook();
+    expect(await screen.findByRole("form", { name: "Set up chapters" })).toHaveTextContent("Saving also adds this book to your Want to read shelf");
+  });
+
+  test("a Gutenberg list (not reader-set) can be changed too", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ chaptersSetByReader: false, canSetChapters: true, gutenbergId: 55 }) });
+    renderBook();
+    expect(await screen.findByText(/Wrong number of chapters\?/)).toBeInTheDocument();
+    expect(screen.queryByText(/added by a reader/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Project Gutenberg/ })).toBeNull();
+    userEvent.click(screen.getByRole("button", { name: "Change it" }));
+    expect(screen.getByRole("form", { name: "Set up chapters" })).toHaveTextContent("titles you already have are kept");
+  });
+
+  test("no change option when the reader can't change it (curated book, or not on a shelf)", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ canSetChapters: false }) });
+    renderBook();
+    await screen.findByRole("heading", { name: "Pride and Prejudice" });
+    expect(screen.queryByRole("button", { name: "Change it" })).toBeNull();
+  });
+
+  test("with a circle discussing chapter 30, the form won't go below 30", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ canSetChapters: true, chaptersSetByReader: true, minChapterCount: 30 }) });
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Change it" }));
+    const form = screen.getByRole("form", { name: "Set up chapters" });
+    expect(form).toHaveTextContent("discussion about chapter 30, so it needs at least 30");
+    const box = within(form).getByLabelText(/How many chapters/);
+    expect(box).toHaveAttribute("min", "30");
+    userEvent.clear(box);
+    userEvent.type(box, "29");
+    expect(within(form).getByRole("button", { name: "Save chapters" })).toBeDisabled();
+    userEvent.clear(box);
+    userEvent.type(box, "30");
+    expect(within(form).getByRole("button", { name: "Save chapters" })).toBeEnabled();
+  });
+
+  test("restoring Project Gutenberg's list reloads the page", async () => {
+    let calls = 0;
+    axios.get.mockImplementation((url) => {
+      if (url !== "/books/pride-and-prejudice") return Promise.resolve({ data: [] });
+      calls += 1;
+      return Promise.resolve({ data: calls === 1 ? bookDetail({ chaptersSetByReader: true, canSetChapters: true, canRestoreChapters: true, gutenbergId: 1342 }) : bookDetail({ chaptersSetByReader: false, canSetChapters: true, canRestoreChapters: false }) });
+    });
+    axios.post.mockResolvedValueOnce({ data: { chapterCount: 61, chaptersSetByReader: false } });
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Use Project Gutenberg's chapter list" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Use Project Gutenberg's chapter list" })).toBeNull());
+    expect(axios.post).toHaveBeenCalledWith("/books/b1/chapters/restore");
+    expect(screen.queryByText(/added by a reader/)).toBeNull();
+  });
+
+  test("a failed restore shows why", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ chaptersSetByReader: true, canSetChapters: true, canRestoreChapters: true, gutenbergId: 1342 }) });
+    axios.post.mockRejectedValueOnce(httpError(502, { error: "Project Gutenberg isn't answering right now. Please try again in a minute." }));
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Use Project Gutenberg's chapter list" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("isn't answering");
+  });
 });

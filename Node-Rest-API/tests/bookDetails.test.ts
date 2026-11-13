@@ -179,10 +179,18 @@ describe("setting chapters", () => {
     expect((await c.post(`/api/books/${bookId}/chapters`, { count: MAX_CHAPTERS })).status).toBe(200);
   });
 
-  test("you need the book on your shelf", async () => {
+  test("a reader without the book can set chapters too; it goes on their Want to read shelf", async () => {
     const { ol, bookId } = await imported();
     const other = await reader(ol);
-    expect((await other.c.post(`/api/books/${bookId}/chapters`, { count: 10 })).status).toBe(403);
+    expect((await other.c.get(`/api/books/${bookId}`)).body).toMatchObject({ shelf: null, canSetChapters: true });
+    expect((await other.c.post(`/api/books/${bookId}/chapters`, { count: 10 })).status).toBe(200);
+    expect((await other.c.get(`/api/books/${bookId}`)).body).toMatchObject({ shelf: "want", chapterCount: 10 });
+  });
+
+  test("a reader whose book is already on a shelf keeps that shelf", async () => {
+    const { c, bookId } = await imported("finished");
+    await c.post(`/api/books/${bookId}/chapters`, { count: 12 });
+    expect((await c.get(`/api/books/${bookId}`)).body).toMatchObject({ shelf: "finished", chapter: 12 });
   });
 
   test("reader-set chapters can be corrected; progress past the new end is pulled back; finished readers end on it", async () => {
@@ -197,14 +205,18 @@ describe("setting chapters", () => {
     expect((await other.c.get(`/api/books/${bookId}`)).body.chapter).toBe(40);
   });
 
-  test("once a circle reads it, chapters are fixed", async () => {
+  test("once a circle reads it, chapters can still grow, but never below a discussion", async () => {
     const { c, bookId } = await imported();
     await c.post(`/api/books/${bookId}/chapters`, { count: 10 });
-    await c.post("/api/circles", { name: "Fixed now", bookId });
-    const res = await c.post(`/api/books/${bookId}/chapters`, { count: 12 });
-    expect(res.status).toBe(409);
-    expect(res.body.error).toMatch(/circle is already reading/);
-    expect((await c.get(`/api/books/${bookId}`)).body.canSetChapters).toBe(false);
+    const { body: circle } = await c.post("/api/circles", { name: "Fixed now", bookId });
+    await c.put(`/api/books/${bookId}/progress`, { chapter: 8 });
+    await c.post(`/api/circles/${circle._id}/threads`, { chapter: 8, title: "Chapter eight talk" });
+    expect((await c.get(`/api/books/${bookId}`)).body).toMatchObject({ canSetChapters: true, minChapterCount: 8 });
+    const tooFew = await c.post(`/api/books/${bookId}/chapters`, { count: 7 });
+    expect(tooFew.status).toBe(409);
+    expect(tooFew.body.error).toMatch(/discussion about chapter 8/);
+    expect((await c.post(`/api/books/${bookId}/chapters`, { count: 8 })).status).toBe(200);
+    expect((await c.post(`/api/books/${bookId}/chapters`, { count: 12 })).status).toBe(200);
   });
 
   test("books with chapters from their source can't be changed", async () => {
