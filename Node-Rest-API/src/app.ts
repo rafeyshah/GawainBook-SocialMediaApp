@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import express, { RequestHandler } from "express";
+import express, { Request, RequestHandler } from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -26,6 +26,7 @@ import { createMailer, Mailer } from "./mailer";
 import { bookSearchRouter } from "./routes/books";
 import { OpenLibrary, COVER_IMAGE_ORIGINS } from "./openLibrary";
 import { Gutenberg } from "./gutenberg";
+import { LoginThrottle } from "./loginThrottle";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_TYPES: Record<string, string> = {
@@ -34,6 +35,28 @@ export const IMAGE_TYPES: Record<string, string> = {
   "image/gif": ".gif",
   "image/webp": ".webp",
 };
+// What an upload really is, from its first bytes. The type the browser declares
+// is only a claim; a file is accepted only if its contents match an image type.
+export function sniffImageType(buf: Buffer): string | null {
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  if (buf.length >= 6 && /^GIF8[79]a$/.test(buf.subarray(0, 6).toString("latin1"))) return "image/gif";
+  if (buf.length >= 12 && buf.subarray(0, 4).toString("latin1") === "RIFF" && buf.subarray(8, 12).toString("latin1") === "WEBP") return "image/webp";
+  return null;
+}
+
+// Request URLs as logged: email-link tokens are blanked so logs never hold a usable link.
+export const redactUrl = (url: string): string => url.replace(/([?&#]token=)[^&#\s]*/gi, "$1[redacted]");
+
+// Proxies between the internet and this app. On Render that's Cloudflare and
+// then Render's load balancer (TRUST_PROXY_HOPS=2); each appends the address it
+// saw to X-Forwarded-For, so counting hops from the right gives the real client
+// and anything a client writes into the header itself is ignored.
+export function proxyHops(env: NodeJS.ProcessEnv = process.env): number {
+  const n = Number(env.TRUST_PROXY_HOPS ?? 1);
+  return Number.isInteger(n) && n >= 0 && n <= 5 ? n : 1;
+}
+
 // Keys the /images route will look up in storage.
 export const UPLOAD_KEY = /^uploads\/[\w-]+\.(?:png|jpe?g|gif|webp)$/i;
 
@@ -55,11 +78,13 @@ export interface AppOptions {
   mailer?: Mailer;
 }
 
-export type LimitName = "auth" | "upload" | "waitlist" | "posting";
+export type LimitName = "auth" | "login" | "upload" | "waitlist" | "posting";
 
 // Defaults: generous for real readers, tight enough to stop brute force.
 export const DEFAULT_LIMITS: Record<LimitName, Limit> = {
   auth: { windowMs: 15 * 60 * 1000, max: 10 },
+  // Failed sign-ins per account, whatever address they come from.
+  login: { windowMs: 15 * 60 * 1000, max: 10 },
   // Discussions, replies, edits and reports, per reader.
   posting: { windowMs: 10 * 60 * 1000, max: 30 },
   upload: { windowMs: 60 * 60 * 1000, max: 30 },
@@ -89,13 +114,13 @@ export function createApp(options: AppOptions = {}) {
     waitlist: limiter(limits.waitlist, "Too many sign-ups from this network. Please try again later."),
     posting: limiter(limits.posting, "You're posting very quickly. Please wait a few minutes and try again.", true),
   };
+  const loginThrottle = new LoginThrottle(limits.login);
   const openLibrary = options.openLibrary ?? new OpenLibrary();
   const mailer = options.mailer ?? createMailer();
 
   const app = express();
-  // Render terminates HTTPS in front of the app: trust one proxy hop so
-  // rate limits see the real client IP and req.secure is correct.
-  app.set("trust proxy", 1);
+  // Rate limits need the real client IP, and req.secure must be right behind HTTPS proxies.
+  app.set("trust proxy", proxyHops());
 
   // Uploaded images redirect to signed URLs on the storage domain; browsers
   // check the final URL against img-src, so that origin must be allowed.
@@ -109,7 +134,15 @@ export function createApp(options: AppOptions = {}) {
       },
     })
   );
-  if (process.env.NODE_ENV !== "test") app.use(morgan("common"));
+  // Features the app never uses stay off, even if injected content asks for them.
+  app.use((req, res, next) => {
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()");
+    next();
+  });
+  morgan.token("safe-url", (req: Request) => redactUrl(req.originalUrl || req.url));
+  if (process.env.NODE_ENV !== "test") {
+    app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :safe-url HTTP/:http-version" :status :res[content-length]'));
+  }
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
   app.use(csrfProtection);
@@ -152,9 +185,15 @@ export function createApp(options: AppOptions = {}) {
         res.status(400).json({ error: "No image was uploaded." });
         return;
       }
-      const key = `uploads/${Date.now()}-${crypto.randomBytes(6).toString("hex")}${IMAGE_TYPES[req.file.mimetype]}`;
+      // Stored under the type its contents prove, not the one the browser claimed.
+      const type = sniffImageType(req.file.buffer);
+      if (!type) {
+        res.status(400).json({ error: "Please upload a PNG, JPG, GIF or WebP image." });
+        return;
+      }
+      const key = `uploads/${Date.now()}-${crypto.randomBytes(6).toString("hex")}${IMAGE_TYPES[type]}`;
       storage
-        .put(key, req.file.buffer, req.file.mimetype)
+        .put(key, req.file.buffer, type)
         .then(() => res.status(201).json({ filename: key }))
         .catch(next);
     });
@@ -163,13 +202,15 @@ export function createApp(options: AppOptions = {}) {
   app.get(
     "/api/health",
     handle(async (req, res) => {
-      const status = await dbStatus();
-      res.status(status.db === "connected" ? 200 : 503).json({ ...status, storage: storage.kind, email: mailer.kind, apiVersion: API_VERSION });
+      // Public: only whether it's up and which API version runs. Details go to the server log.
+      const { db, error } = await dbStatus();
+      if (error) console.error("Health check: database unavailable:", error);
+      res.status(db === "connected" ? 200 : 503).json({ db, apiVersion: API_VERSION });
     })
   );
 
-  app.use("/api/auth", authRouter(limit, mailer));
-  app.use("/api", accountRouter(mailer, limit.auth));
+  app.use("/api/auth", authRouter(limit, mailer, loginThrottle));
+  app.use("/api", accountRouter(mailer, limit.auth, loginThrottle));
   app.use("/api", adminRouter());
   app.use("/api/users", userRoute);
   app.use("/api/posts", postRouter(limit.posting));

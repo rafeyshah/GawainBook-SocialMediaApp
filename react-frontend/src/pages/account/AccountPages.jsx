@@ -7,7 +7,36 @@ import { errorMessage } from "../../apiCalls";
 import { MIN_PASSWORD } from "../auth/Auth";
 import "./account.css";
 
-const tokenFromSearch = (search) => new URLSearchParams(search).get("token") || "";
+// Email links carry the token after "#" (…/reset-password#token=…), so it never
+// reaches a server or its logs. Links sent before that used "?token=": still accepted.
+export const tokenFromLocation = ({ hash, search }) =>
+  new URLSearchParams((hash || "").replace(/^#/, "")).get("token") || new URLSearchParams(search).get("token") || "";
+
+// Reads the link's token, then takes it out of the address bar (and so out of
+// history). Each visit counts afresh: opening a link again in the same tab only
+// changes the "#" part, which doesn't reload the page, so the page is keyed on
+// the visit to start over with the new link.
+function useLinkToken() {
+  const location = useLocation();
+  const fromUrl = tokenFromLocation(location);
+  const [token, setToken] = useState(fromUrl);
+  const [visit, setVisit] = useState(0);
+  const firstVisit = useRef(true);
+  // A new location object means a new navigation (React Router v5 gives
+  // "#"-only changes no key, so the object itself is what changes).
+  useEffect(() => {
+    if (!fromUrl) return;
+    window.history.replaceState(window.history.state, "", location.pathname);
+    if (firstVisit.current) {
+      firstVisit.current = false;
+      return;
+    }
+    setToken(fromUrl);
+    setVisit((v) => v + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+  return { token, visit };
+}
 
 export function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -60,8 +89,11 @@ export function ForgotPassword() {
 }
 
 export function ResetPassword() {
-  const { search } = useLocation();
-  const token = tokenFromSearch(search);
+  const { token, visit } = useLinkToken();
+  return <ResetPasswordPage key={visit} token={token} />;
+}
+
+function ResetPasswordPage({ token }) {
   const { dispatch } = useContext(AuthContext);
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
@@ -134,8 +166,11 @@ export function ResetPassword() {
 }
 
 export function VerifyEmail() {
-  const { search } = useLocation();
-  const token = tokenFromSearch(search);
+  const { token, visit } = useLinkToken();
+  return <VerifyEmailPage key={visit} token={token} />;
+}
+
+function VerifyEmailPage({ token }) {
   const { user, dispatch } = useContext(AuthContext);
   const [state, setState] = useState({ status: token ? "verifying" : "error", message: "This link isn't complete. Open it from the email again." });
   const started = useRef(false);

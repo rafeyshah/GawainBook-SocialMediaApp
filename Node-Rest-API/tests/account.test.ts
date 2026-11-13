@@ -12,7 +12,12 @@ beforeEach(() => {
   mailer.fail = false;
 });
 
-const tokenFrom = (link?: string) => new URL(link!).searchParams.get("token")!;
+// Tokens travel after "#", so they're never sent to (or logged by) a server.
+const tokenFrom = (link?: string) => {
+  const url = new URL(link!);
+  expect(url.search).toBe("");
+  return new URLSearchParams(url.hash.slice(1)).get("token")!;
+};
 const pathOf = (link?: string) => new URL(link!).pathname;
 // Pretend the last email of a kind was sent long enough ago to send another.
 const ageTokens = (userId: string) =>
@@ -161,7 +166,7 @@ describe("email verification", () => {
     process.env.APP_URL = "https://gawainbook.example";
     try {
       await signUp({ email: "url@example.com" });
-      expect(mailer.linkIn(mailer.last("url@example.com"))).toMatch(/^https:\/\/gawainbook\.example\/verify-email\?token=/);
+      expect(mailer.linkIn(mailer.last("url@example.com"))).toMatch(/^https:\/\/gawainbook\.example\/verify-email#token=[\w-]{43}$/);
     } finally {
       delete process.env.APP_URL;
     }

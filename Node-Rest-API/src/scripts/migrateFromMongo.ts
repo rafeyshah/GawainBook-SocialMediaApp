@@ -26,8 +26,9 @@ async function main() {
   if (!MONGO_URL) throw new Error("MONGO_URL is not set");
   if (!DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
-  await mongoose.connect(MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true } as mongoose.ConnectOptions);
+  await mongoose.connect(MONGO_URL);
   const mdb = mongoose.connection.db;
+  if (!mdb) throw new Error("Could not open the MongoDB database");
   const mongoUsers = (await mdb.collection("users").find().toArray()) as unknown as MongoUser[];
   const mongoPosts = (await mdb.collection("posts").find().toArray()) as unknown as MongoPost[];
   await mongoose.disconnect();

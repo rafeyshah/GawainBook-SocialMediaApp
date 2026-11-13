@@ -1,13 +1,73 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
+import { AuthContext } from "../../context/AuthContext";
 import userEvent from "@testing-library/user-event";
 import axios from "axios";
-import { ForgotPassword, ResetPassword, VerifyEmail } from "./AccountPages";
+import { ForgotPassword, ResetPassword, VerifyEmail, tokenFromLocation } from "./AccountPages";
 import { renderWithAuth, httpError, networkError, ME } from "../../testUtils";
 
 jest.mock("axios");
 
 // Public pages fetch /legal for the footer; answer it harmlessly.
 beforeEach(() => axios.get.mockResolvedValue({ data: { operator: null, waitlistOpen: false } }));
+
+describe("email-link tokens", () => {
+  test.each([
+    [{ hash: "#token=abc", search: "" }, "abc"],
+    [{ hash: "", search: "?token=old" }, "old"], // links sent before the switch to "#"
+    [{ hash: "#token=new", search: "?token=old" }, "new"],
+    [{ hash: "#other=1", search: "" }, ""],
+    [{ hash: "", search: "" }, ""],
+  ])("tokenFromLocation(%p) = %p", (location, token) => expect(tokenFromLocation(location)).toBe(token));
+
+  test("the token is taken out of the address bar as soon as the page has read it", async () => {
+    const replace = jest.spyOn(window.history, "replaceState");
+    axios.post.mockResolvedValue({ data: { verified: true } });
+    renderWithAuth(<VerifyEmail />, { route: "/verify-email#token=tok-123456789012345678901" });
+    await screen.findByRole("heading", { name: /Email confirmed/ });
+    expect(replace.mock.calls.map((call) => call[2])).toEqual(["/verify-email"]); // same page, no token
+    expect(axios.post).toHaveBeenCalledWith("/auth/verify-email", { token: "tok-123456789012345678901" });
+    replace.mockRestore();
+  });
+
+  test("opening the link again in the same tab starts over (the server then says it's been used)", async () => {
+    const history = createMemoryHistory({ initialEntries: ["/reset-password#token=tok-123456789012345678901"] });
+    render(
+      <AuthContext.Provider value={{ user: null, dispatch: jest.fn(), isFetching: false, error: false, checking: false }}>
+        <Router history={history}>
+          <ResetPassword />
+        </Router>
+      </AuthContext.Provider>
+    );
+    const save = async () => {
+      userEvent.type(screen.getByLabelText("New password"), "new-password-1");
+      userEvent.type(screen.getByLabelText("Confirm new password"), "new-password-1");
+      userEvent.click(screen.getByRole("button", { name: "Save new password" }));
+    };
+    axios.post.mockResolvedValueOnce({ data: { ...ME, emailVerified: true } });
+    await save();
+    await screen.findByRole("status");
+    expect(screen.queryByLabelText("New password")).toBeNull();
+    // Only the "#" part changes: no page load, but the form must come back.
+    axios.post.mockRejectedValueOnce(httpError(400, { error: "This link has already been used." }));
+    act(() => history.push("/reset-password#token=tok-123456789012345678901"));
+    await screen.findByLabelText("New password");
+    await save();
+    expect(await screen.findByRole("alert")).toHaveTextContent("already been used");
+    expect(axios.post).toHaveBeenCalledTimes(2);
+  });
+
+  test("an old ?token= reset link still works", async () => {
+    axios.post.mockResolvedValueOnce({ data: { ...ME, emailVerified: true } });
+    renderWithAuth(<ResetPassword />, { user: null, route: "/reset-password?token=tok-old-12345678901234567" });
+    userEvent.type(screen.getByLabelText("New password"), "new-password-1");
+    userEvent.type(screen.getByLabelText("Confirm new password"), "new-password-1");
+    userEvent.click(screen.getByRole("button", { name: "Save new password" }));
+    await screen.findByRole("status");
+    expect(axios.post).toHaveBeenCalledWith("/auth/reset-password", { token: "tok-old-12345678901234567", password: "new-password-1" });
+  });
+});
 
 describe("ForgotPassword", () => {
   const setup = () => renderWithAuth(<ForgotPassword />, { user: null });
@@ -36,7 +96,7 @@ describe("ForgotPassword", () => {
 });
 
 describe("ResetPassword", () => {
-  const setup = (route = "/reset-password?token=tok-123456789012345678901") => renderWithAuth(<ResetPassword />, { user: null, route });
+  const setup = (route = "/reset-password#token=tok-123456789012345678901") => renderWithAuth(<ResetPassword />, { user: null, route });
 
   test("saves the new password, signs you in and offers the way home", async () => {
     axios.post.mockResolvedValueOnce({ data: { ...ME, emailVerified: true } });
@@ -83,7 +143,7 @@ describe("ResetPassword", () => {
 });
 
 describe("VerifyEmail", () => {
-  const route = "/verify-email?token=tok-123456789012345678901";
+  const route = "/verify-email#token=tok-123456789012345678901";
 
   test("confirms the email once and updates the signed-in user", async () => {
     axios.post.mockResolvedValue({ data: { verified: true } });

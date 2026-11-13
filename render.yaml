@@ -13,6 +13,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      # Requests reach the app through Cloudflare and then Render's load
+      # balancer. Two trusted hops lets rate limits see each visitor's real
+      # address (one hop counted Cloudflare's servers instead).
+      - key: TRUST_PROXY_HOPS
+        value: "2"
       # Neon Postgres (from `neon env pull` / the Neon console).
       - key: DATABASE_URL
         sync: false

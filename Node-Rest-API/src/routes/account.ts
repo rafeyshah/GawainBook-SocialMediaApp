@@ -24,6 +24,7 @@ import {
 } from "../db/schema";
 import { handle, HttpError } from "../http";
 import { endAllSessions, endSession, hashToken, requireAuth, startSession } from "../auth";
+import { LoginThrottle } from "../loginThrottle";
 import { ownAccount } from "../serializers";
 import { Mailer, renderEmail } from "../mailer";
 import { normalizeEmail } from "./auth";
@@ -79,7 +80,8 @@ async function issueToken(user: User, kind: Kind): Promise<string> {
 
 export async function sendVerification(mailer: Mailer, req: Request, user: User): Promise<void> {
   const token = await issueToken(user, "verify");
-  const url = `${appUrl(req)}/verify-email?token=${token}`;
+  // After "#": browsers never send it to a server, so it stays out of request logs.
+  const url = `${appUrl(req)}/verify-email#token=${token}`;
   await mailer.send({
     to: user.email,
     subject: "Confirm your email for GawainBook",
@@ -95,7 +97,7 @@ export async function sendVerification(mailer: Mailer, req: Request, user: User)
 
 async function sendReset(mailer: Mailer, req: Request, user: User): Promise<void> {
   const token = await issueToken(user, "reset");
-  const url = `${appUrl(req)}/reset-password?token=${token}`;
+  const url = `${appUrl(req)}/reset-password#token=${token}`;
   await mailer.send({
     to: user.email,
     subject: "Reset your GawainBook password",
@@ -132,7 +134,7 @@ async function useToken(raw: unknown, kind: Kind) {
 
 const FORGOT_MESSAGE = "If an account uses that email, we've sent a link to reset the password. Check your inbox (and spam folder).";
 
-export function accountRouter(mailer: Mailer, limitAuth: RequestHandler) {
+export function accountRouter(mailer: Mailer, limitAuth: RequestHandler, throttle?: LoginThrottle) {
   const router = Router();
 
   // Always the same answer, so it can't be used to find out who has an account.
@@ -174,6 +176,7 @@ export function accountRouter(mailer: Mailer, limitAuth: RequestHandler) {
         .returning();
       // Sign out everywhere (whoever had the old password), then sign in here.
       await endAllSessions(user.id);
+      throttle?.clear(user.email); // a reset unlocks sign-in straight away
       await startSession(res, user.id);
       res.json(await ownAccount(db, updated));
     })

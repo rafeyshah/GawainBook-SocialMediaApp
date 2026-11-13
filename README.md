@@ -37,23 +37,6 @@ It's a full-stack TypeScript app: a React frontend and an Express API backed by 
 > **Live demo:** https://gawainbook.onrender.com
 > Runs on Render's free plan, which sleeps after 15 minutes without visitors. The first load can take 30–60 seconds while it wakes up.
 
-## How the spoiler lock works
-
-One function decides who can see what ([`src/policy.ts`](Node-Rest-API/src/policy.ts)), and every route that returns discussion content goes through it. Lists apply the same rule in SQL (`chapter <= your progress`), so later chapters never leave the database.
-
-```mermaid
-flowchart LR
-    R([Reader opens a discussion]) --> V{Can see the circle?<br/>public, or a member}
-    V -- no --> H[404 Not found<br/><i>a private circle isn't revealed</i>]
-    V -- yes --> B{Blocked either way?}
-    B -- yes --> H
-    B -- no --> P{Reached its chapter?<br/>progress comes from the database}
-    P -- no --> L[Locked placeholder<br/><i>chapter number only:<br/>no title, author or text</i>]
-    P -- yes --> O[Open: title, text, replies]
-```
-
-The same check filters thread lists, single threads, replies, search and notifications. Move your progress back and later discussions lock again straight away. A [10-case test matrix](docs/plan/GawainBook_Launch_Plan.md#44-the-test-matrix-that-proves-the-core-promise) and a Playwright test in a real browser prove it.
-
 ## Screenshots
 
 <p align="center">
@@ -210,6 +193,24 @@ flowchart LR
 
 The reasoning behind each choice is in the [decision log](docs/decisions/README.md).
 
+## How the spoiler lock works
+
+One function decides who can see what ([`src/policy.ts`](Node-Rest-API/src/policy.ts)), and every route that returns discussion content goes through it. Lists apply the same rule in SQL (`chapter <= your progress`), so later chapters never leave the database.
+
+```mermaid
+flowchart LR
+    R([Reader opens a discussion]) --> V{Can see the circle?<br/>public, or a member}
+    V -- no --> H[404 Not found<br/><i>a private circle isn't revealed</i>]
+    V -- yes --> B{Blocked either way?}
+    B -- yes --> H
+    B -- no --> P{Reached its chapter?<br/>progress comes from the database}
+    P -- no --> L[Locked placeholder<br/><i>chapter number only:<br/>no title, author or text</i>]
+    P -- yes --> O[Open: title, text, replies]
+```
+
+The same check filters thread lists, single threads, replies, search and notifications. Move your progress back and later discussions lock again straight away. A [10-case test matrix](docs/plan/GawainBook_Launch_Plan.md#44-the-test-matrix-that-proves-the-core-promise) and a Playwright test in a real browser prove it.
+
+
 ## Security and privacy
 
 | Area | How it's handled |
@@ -217,12 +218,12 @@ The reasoning behind each choice is in the [decision log](docs/decisions/README.
 | Sessions | Random token in an `httpOnly`, `Secure`, `SameSite=Lax` cookie; only its SHA-256 hash is stored. Server-side logout; 30-day expiry |
 | CSRF | Double-submit token required on every state-changing request |
 | Passwords | bcrypt, at least 8 characters; changing or resetting signs out other devices; changing needs the current password |
-| Reset and confirmation links | 256-bit random, stored hashed, single use, short-lived (1 h / 48 h), only the newest works, built from `APP_URL` (not the request's Host header) |
+| Reset and confirmation links | 256-bit random, stored hashed, single use, short-lived (1 h / 48 h), only the newest works, built from `APP_URL` (not the request's Host header); the token sits after `#` so it never reaches a server or its logs, and is wiped from the address bar once read |
 | Account discovery | Sign-in and "forgot password" give the same answer whether or not an account exists; sign-in also takes about the same time either way |
-| Abuse | Rate limits on sign-in, sign-up, password reset, uploads and posting; reporting, blocking, moderator hiding, admin suspension |
+| Abuse | Rate limits on sign-in, sign-up, password reset, uploads and posting, keyed on each visitor's real address behind Cloudflare and Render; at most 10 failed sign-ins per account every 15 minutes, from any address; reporting, blocking, moderator hiding, admin suspension |
+| Uploads | Accepted only if the file's own bytes are a PNG, JPEG, GIF or WebP (the browser's claimed type is ignored); 5 MB max; stored under a server-chosen name in a private bucket |
+| Headers | Strict Content-Security-Policy (no inline scripts), HSTS for a year, Permissions-Policy turning off camera, microphone and location, cross-origin isolation; the public health check shows only up/down and the API version |
 | Authorization | The user always comes from the session, never the request body; access rules live in one module and are tested per route |
-| Uploads | Type and size checked; stored under a server-chosen key; only known keys can be served |
-| Headers | Helmet with a strict Content-Security-Policy (images only from this site, the photo bucket and Open Library covers) |
 | GDPR | Terms and privacy consent with version recorded; minimum age 16; data export and self-service deletion; no tracking cookies; no Google Fonts |
 
 Found a security problem? Please don't open a public issue: email the address in the [Impressum](https://gawainbook.onrender.com/impressum).

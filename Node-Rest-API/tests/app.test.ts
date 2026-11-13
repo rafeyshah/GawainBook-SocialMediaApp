@@ -13,10 +13,11 @@ const PNG = Buffer.from(
 );
 
 describe("GET /api/health", () => {
-  test("reports a connected database and the storage in use", async () => {
+  test("says only whether the database is up and which API version runs", async () => {
     const res = await request(app).get("/api/health");
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ db: "connected", error: null, storage: "disk", email: "memory", apiVersion: API_VERSION });
+    // Nothing else is public: no storage or email setup, no database error text.
+    expect(res.body).toEqual({ db: "connected", apiVersion: API_VERSION });
   });
 });
 
@@ -72,12 +73,18 @@ describe("POST /api/upload", () => {
     expect(Buffer.compare(served.body, PNG)).toBe(0);
   });
 
+  // Minimal real files: each starts with its format's signature.
+  const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(32)]);
+  const GIF = Buffer.concat([Buffer.from("GIF89a", "latin1"), Buffer.alloc(32)]);
+  const WEBP = Buffer.concat([Buffer.from("RIFF", "latin1"), Buffer.from([24, 0, 0, 0]), Buffer.from("WEBPVP8 ", "latin1"), Buffer.alloc(32)]);
+
   test.each([
-    ["image/jpeg", ".jpg"],
-    ["image/gif", ".gif"],
-    ["image/webp", ".webp"],
-  ])("uses the right extension for %s", async (type, ext) => {
-    const res = await client.upload(PNG, "x", type);
+    ["a JPEG", JPEG, "image/jpeg", ".jpg"],
+    ["a GIF", GIF, "image/gif", ".gif"],
+    ["a WebP", WEBP, "image/webp", ".webp"],
+    ["a PNG the browser called a JPEG", PNG, "image/jpeg", ".png"], // the contents decide
+  ])("stores %s with the right extension", async (_name, body, type, ext) => {
+    const res = await client.upload(body, "x", type);
     expect(res.status).toBe(201);
     expect(res.body.filename.endsWith(ext)).toBe(true);
   });
@@ -96,6 +103,9 @@ describe("POST /api/upload", () => {
   test.each([
     ["HTML", Buffer.from("<script>alert(1)</script>"), "x.html", "text/html"],
     ["SVG (can carry scripts)", Buffer.from("<svg/>"), "x.svg", "image/svg+xml"],
+    ["HTML claiming to be a PNG", Buffer.from("<html><script>alert(1)</script></html>"), "x.png", "image/png"],
+    ["a script claiming to be a JPEG", Buffer.from("#!/bin/sh echo hi"), "x.jpg", "image/jpeg"],
+    ["an empty file", Buffer.alloc(0), "x.png", "image/png"],
   ])("rejects %s", async (_name, body, filename, type) => {
     const res = await client.upload(body, filename, type);
     expect(res.status).toBe(400);
@@ -103,10 +113,11 @@ describe("POST /api/upload", () => {
   });
 
   test("rejects files over 5 MB and accepts exactly 5 MB", async () => {
-    const over = await client.upload(Buffer.alloc(5 * 1024 * 1024 + 1), "big.png", "image/png");
+    const pngOfSize = (n: number) => Buffer.concat([PNG, Buffer.alloc(n - PNG.length)]);
+    const over = await client.upload(pngOfSize(5 * 1024 * 1024 + 1), "big.png", "image/png");
     expect(over.status).toBe(400);
     expect(over.body.error).toMatch(/5 MB/);
-    expect((await client.upload(Buffer.alloc(5 * 1024 * 1024), "max.png", "image/png")).status).toBe(201);
+    expect((await client.upload(pngOfSize(5 * 1024 * 1024), "max.png", "image/png")).status).toBe(201);
   });
 
   test("rejects a request with no file", async () => {

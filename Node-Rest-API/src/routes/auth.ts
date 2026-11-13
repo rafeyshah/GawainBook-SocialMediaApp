@@ -10,6 +10,7 @@ import { endSession, requireAuth, startSession } from "../auth";
 import { Mailer } from "../mailer";
 import { TERMS_VERSION } from "../legal";
 import { checkNewPassword, sendVerification } from "./account";
+import { LoginThrottle } from "../loginThrottle";
 
 export const normalizeEmail = (email: unknown): string => String(email ?? "").trim().toLowerCase();
 
@@ -17,7 +18,7 @@ export const normalizeEmail = (email: unknown): string => String(email ?? "").tr
 // doesn't exist keeps response times similar (no account enumeration by timing).
 const DUMMY_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString("hex"), 10);
 
-export function authRouter(limit: { auth: import("express").RequestHandler }, mailer: Mailer) {
+export function authRouter(limit: { auth: import("express").RequestHandler }, mailer: Mailer, throttle: LoginThrottle) {
   const router = Router();
 
   router.post(
@@ -57,11 +58,20 @@ export function authRouter(limit: { auth: import("express").RequestHandler }, ma
     limit.auth,
     handle(async (req, res) => {
       const db = getDb();
-      const [user] = await db.select().from(users).where(eq(users.email, normalizeEmail(req.body.email)));
+      const email = normalizeEmail(req.body.email);
+      // Checked before the password, so a locked account can't be guessed even with the right one.
+      if (throttle.isLocked(email)) {
+        throw new HttpError(429, "Too many sign-in attempts for this account. Please wait 15 minutes, or reset your password.");
+      }
+      const [user] = await db.select().from(users).where(eq(users.email, email));
       const password = String(req.body.password ?? "");
       const valid = await bcrypt.compare(password, user ? user.passwordHash : DUMMY_HASH);
       // Same message for unknown email and wrong password.
-      if (!user || !valid) throw new HttpError(401, "Incorrect email or password.");
+      if (!user || !valid) {
+        throttle.recordFailure(email);
+        throw new HttpError(401, "Incorrect email or password.");
+      }
+      throttle.clear(email);
       if (user.suspendedAt) throw new HttpError(403, "This account has been suspended. If you think this is a mistake, contact us via the Impressum.");
       await startSession(res, user.id);
       res.status(200).json(await ownAccount(db, user));
