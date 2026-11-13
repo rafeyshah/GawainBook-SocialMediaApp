@@ -27,6 +27,7 @@ export default function ProgressEditor({ book, chapter, chapters, onSaved, compa
   };
 
   const options = chapters && chapters.length ? chapters : Array.from({ length: total }, (_, i) => ({ seq: i + 1 }));
+  if (!total) return null;
 
   return (
     <div className={`progressEditor ${compact ? "compact" : ""}`}>

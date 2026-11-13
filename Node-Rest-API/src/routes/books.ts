@@ -1,10 +1,10 @@
-import { Router } from "express";
+import { RequestHandler, Router } from "express";
 import { and, asc, count, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { books, chapters, circleMembers, circles, userBooks, users } from "../db/schema";
 import { handle, HttpError, isId } from "../http";
 import { requireAuth } from "../auth";
-import { OpenLibrary } from "../openLibrary";
+import { OpenLibrary, WORK_KEY } from "../openLibrary";
 
 const router = Router();
 // Only this router's own paths: it's mounted at /api next to public routes.
@@ -20,6 +20,7 @@ const bookSummary = {
   author: books.author,
   publishedYear: books.publishedYear,
   coverColor: books.coverColor,
+  coverUrl: books.coverUrl,
 };
 
 async function chapterCounts(bookIds: string[]): Promise<Map<string, number>> {
@@ -92,6 +93,8 @@ router.get(
       publishedYear: book.publishedYear,
       description: book.description,
       coverColor: book.coverColor,
+      coverUrl: book.coverUrl,
+      olWorkId: book.olWorkId,
       sourceNote: book.sourceNote,
       chapters: chapterRows,
       chapterCount: chapterRows.length ? chapterRows[chapterRows.length - 1].seq : 0,
@@ -181,10 +184,32 @@ router.get(
   })
 );
 
-// Book search: our own books (chapters available, so circles can read them)
-// plus Open Library results for discovery. Open Library being slow or down
-// only drops the second list.
-export function bookSearchRouter(openLibrary: OpenLibrary) {
+// Covers for books without a cover image: a calm palette, picked by title.
+export const COVER_PALETTE = ["#7a3e48", "#2f7553", "#3d5a80", "#8a5a2b", "#5b4a7a", "#2d6a6a", "#7a5c3e", "#4a5a2f"];
+export const coverColorFor = (title: string) => {
+  let h = 0;
+  for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return COVER_PALETTE[h % COVER_PALETTE.length];
+};
+
+// "Pride & Prejudice!" -> "pride-prejudice"; empty for titles with no letters or digits.
+export const slugify = (title: string) =>
+  title
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    // At most 60 characters, cut at a word boundary when possible.
+    .replace(/^(.{0,60})(?:-.*)?$/s, (all, head) => (all.length <= 60 ? all : head || all.slice(0, 60)))
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+
+const pass: RequestHandler = (req, res, next) => next();
+
+// Book search: our own books (with your shelf) plus Open Library results for
+// discovery. Open Library being slow or down only drops the second list.
+export function bookSearchRouter(openLibrary: OpenLibrary, limitPosting: RequestHandler = pass) {
   const search = Router();
   search.get(
     "/books/search",
@@ -193,24 +218,115 @@ export function bookSearchRouter(openLibrary: OpenLibrary) {
       const q = String(req.query.q ?? "").trim();
       if (q.length < 2 || q.length > 100) throw new HttpError(400, "Search for 2–100 characters.");
       const pattern = `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
-      const rows = await getDb()
-        .select(bookSummary)
+      const db = getDb();
+      const rows = await db
+        .select({ ...bookSummary, olWorkId: books.olWorkId })
         .from(books)
         .where(or(sql`${books.title} ilike ${pattern}`, sql`${books.author} ilike ${pattern}`))
         .orderBy(asc(books.title))
         .limit(10);
       const counts = await chapterCounts(rows.map((b) => b._id));
-      const local = rows.map((b) => ({ ...b, chapterCount: counts.get(b._id) ?? 0, chaptersAvailable: (counts.get(b._id) ?? 0) > 0 }));
+      const mine = rows.length
+        ? await db.select().from(userBooks).where(and(eq(userBooks.userId, req.user!.id), inArray(userBooks.bookId, rows.map((b) => b._id))))
+        : [];
+      const shelfOf = new Map(mine.map((m) => [m.bookId, m.shelf]));
+      const local = rows.map(({ olWorkId: _o, ...b }) => ({
+        ...b,
+        chapterCount: counts.get(b._id) ?? 0,
+        chaptersAvailable: (counts.get(b._id) ?? 0) > 0,
+        shelf: shelfOf.get(b._id) ?? null,
+      }));
       let openLibraryResults: Awaited<ReturnType<OpenLibrary["search"]>> = [];
       let openLibraryError = false;
       try {
-        // Leave out works we already have, matched by title and author.
+        // Leave out works we already have (by Open Library id, or by title and author).
+        const ourWorks = new Set(rows.map((b) => b.olWorkId).filter(Boolean));
         const ours = new Set(local.map((b) => `${b.title}|${b.author}`.toLowerCase()));
-        openLibraryResults = (await openLibrary.search(q)).filter((b) => !ours.has(`${b.title}|${b.author}`.toLowerCase()));
+        openLibraryResults = (await openLibrary.search(q)).filter(
+          (b) => !ourWorks.has(b.key.replace("/works/", "")) && !ours.has(`${b.title}|${b.author}`.toLowerCase())
+        );
       } catch {
         openLibraryError = true;
       }
       res.json({ query: q, local, openLibrary: openLibraryResults, openLibraryError });
+    })
+  );
+
+  // Add an Open Library book to GawainBook and put it on your shelf, in one
+  // step. The details come from Open Library on the server, never from the
+  // request, so nobody can invent books. Already added? It's reused.
+  search.post(
+    "/books/import",
+    requireAuth,
+    limitPosting,
+    handle(async (req, res) => {
+      const key = String(req.body.key ?? "");
+      if (!WORK_KEY.test(key)) throw new HttpError(400, "That isn't an Open Library book.");
+      const shelf = req.body.shelf ?? "want";
+      if (!SHELVES.includes(shelf)) throw new HttpError(400, "Shelf must be want, reading or finished.");
+      const workId = key.replace("/works/", "");
+      const db = getDb();
+
+      let [book] = await db.select().from(books).where(eq(books.olWorkId, workId));
+      let created = false;
+      if (!book) {
+        let work;
+        try {
+          work = await openLibrary.work(key);
+        } catch {
+          throw new HttpError(502, "Open Library isn't answering right now. Please try again in a minute.");
+        }
+        if (!work) throw new HttpError(404, "Open Library doesn't have that book.");
+        const base = slugify(work.title) || "book";
+        const [taken] = await db.select({ id: books.id }).from(books).where(eq(books.slug, base));
+        const slug = taken ? `${base}-${workId.toLowerCase()}` : base;
+        const values = {
+          title: work.title,
+          author: work.author,
+          publishedYear: work.year && work.year > -2000 && work.year < 3000 ? work.year : null,
+          coverColor: coverColorFor(work.title),
+          coverUrl: work.coverUrl,
+          olWorkId: workId,
+          sourceNote: `Book details from Open Library (openlibrary.org${key}). Chapters aren't available yet.`,
+        };
+        // Two readers adding the same book at once can clash on the slug or on
+        // the work id: either way, don't fail. Take the row that won, or (if
+        // another book took the slug) try again with the id in the slug,
+        // which is unique.
+        for (const candidate of [slug, `${base}-${workId.toLowerCase()}`]) {
+          const inserted = await db.insert(books).values({ slug: candidate, ...values }).onConflictDoNothing().returning();
+          if (inserted.length) {
+            book = inserted[0];
+            created = true;
+            break;
+          }
+          [book] = await db.select().from(books).where(eq(books.olWorkId, workId));
+          if (book) break;
+        }
+        if (!book) throw new HttpError(409, "Someone is adding this book right now. Please try again.");
+      }
+
+      const last = (await chapterCounts([book.id])).get(book.id) ?? 0;
+      const chapter = shelf === "finished" ? last : 0;
+      const [row] = await db
+        .insert(userBooks)
+        .values({ userId: req.user!.id, bookId: book.id, shelf, chapterSeq: chapter })
+        .onConflictDoUpdate({ target: [userBooks.userId, userBooks.bookId], set: { shelf, updatedAt: new Date() } })
+        .returning();
+      res.status(created ? 201 : 200).json({
+        book: {
+          _id: book.id,
+          slug: book.slug,
+          title: book.title,
+          author: book.author,
+          publishedYear: book.publishedYear,
+          coverColor: book.coverColor,
+          coverUrl: book.coverUrl,
+          chapterCount: last,
+        },
+        shelf: row.shelf,
+        created,
+      });
     })
   );
   return search;

@@ -43,6 +43,13 @@
       "when": 1794448877918,
       "tag": "0005_post_comments_spoilers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794502839093,
+      "tag": "0006_book_import",
+      "breakpoints": true
     }
   ]
 }

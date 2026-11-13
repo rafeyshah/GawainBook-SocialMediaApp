@@ -1,8 +1,23 @@
+import { useState } from "react";
 import "./book.css";
 
-// A typeset cover drawn in CSS: no cover images, so no image rights to clear.
+// A typeset cover drawn in CSS, or the Open Library cover for books added
+// from search. If the image fails to load, the typeset cover takes over.
 export default function BookCover({ book, size = "md" }) {
+  const [broken, setBroken] = useState(false);
   if (!book) return null;
+  if (book.coverUrl && !broken) {
+    return (
+      <img
+        className={`bookCover bookCoverImg ${size}`}
+        src={book.coverUrl}
+        alt={`${book.title} by ${book.author}`}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+      />
+    );
+  }
   return (
     <div
       className={`bookCover ${size}`}
@@ -24,6 +39,8 @@ export const chapterName = (seq, title) => {
 
 // "Chapter 12 of 61" + a bar. Never goes past 100%.
 export function ProgressBar({ chapter = 0, total = 0, label = true }) {
+  // Books added from Open Library have no chapter list yet.
+  if (!total) return label ? <span className="progressLabel noChapters">No chapter list yet</span> : null;
   const pct = total > 0 ? Math.min(100, Math.round((chapter / total) * 100)) : 0;
   return (
     <div className="progress">

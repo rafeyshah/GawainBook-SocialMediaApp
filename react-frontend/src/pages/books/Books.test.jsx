@@ -41,6 +41,21 @@ describe("BookPage", () => {
     expect(axios.get).toHaveBeenCalledWith("/books/pride-and-prejudice");
   });
 
+  test("a book added from Open Library: its cover, a note instead of the chapter map, no chapter picker", async () => {
+    routeGet(axios, {
+      "/books/pride-and-prejudice": bookDetail({ chapters: [], chapterCount: 0, chapter: 0, shelf: "want", olWorkId: "OL5W", coverUrl: "https://covers.openlibrary.org/b/id/5-M.jpg", circles: [] }),
+    });
+    renderBook();
+    expect(await screen.findByRole("heading", { name: "Pride and Prejudice" })).toBeInTheDocument();
+    expect(screen.queryByText(/chapters/)).toBeNull();
+    expect(screen.getByText("No chapter list yet", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "See it on Open Library" })).toHaveAttribute("href", "https://openlibrary.org/works/OL5W");
+    expect(screen.queryByLabelText(/Chapter you've reached/)).toBeNull();
+    expect(screen.getByRole("img", { name: /Pride and Prejudice by/ })).toHaveAttribute("src", "https://covers.openlibrary.org/b/id/5-M.jpg");
+    // Shelves still work.
+    expect(screen.getByRole("radio", { name: "Want to read" })).toHaveAttribute("aria-checked", "true");
+  });
+
   test("chapter map marks read chapters and where you are", async () => {
     routeGet(axios, { "/books/pride-and-prejudice": bookDetail() });
     renderBook();

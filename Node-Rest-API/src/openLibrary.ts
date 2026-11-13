@@ -22,6 +22,7 @@ export const OPEN_LIBRARY_COVERS = "https://covers.openlibrary.org";
 // mirrors); browsers check the final URL against the CSP, so allow those too.
 export const COVER_IMAGE_ORIGINS = [OPEN_LIBRARY_COVERS, "https://archive.org", "https://*.archive.org"];
 const SEARCH_URL = "https://openlibrary.org/search.json";
+export const WORK_KEY = /^\/works\/OL\d+W$/;
 const FIELDS = "key,title,author_name,first_publish_year,cover_i,edition_count";
 
 interface Options {
@@ -49,8 +50,17 @@ export class OpenLibrary {
     this.now = opts.now ?? Date.now;
   }
 
+  // One work by its key ("/works/OL66554W"), or null if Open Library has no such work.
+  async work(key: string): Promise<OpenLibraryBook | null> {
+    if (!WORK_KEY.test(key)) return null;
+    const results = await this.search(`key:${key}`);
+    return results.find((b) => b.key === key) ?? null;
+  }
+
   static normalise(q: string): string {
-    return q.trim().toLowerCase().replace(/\s+/g, " ");
+    const tidy = q.trim().replace(/\s+/g, " ");
+    // Work ids are case-sensitive ("key:/works/OL66534W"); everything else is not.
+    return /^key:/.test(tidy) ? tidy : tidy.toLowerCase();
   }
 
   async search(query: string): Promise<OpenLibraryBook[]> {

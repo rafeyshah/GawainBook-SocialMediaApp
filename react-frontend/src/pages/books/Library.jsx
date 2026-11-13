@@ -131,7 +131,12 @@ export default function Library() {
         </section>
       )}
 
-      <BookSearch />
+      <BookSearch
+        onShelved={(shelf) => {
+          load();
+          setTab(shelf);
+        }}
+      />
     </Layout>
   );
 }

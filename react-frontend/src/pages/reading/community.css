@@ -294,3 +294,49 @@ button.genreChip[aria-pressed="true"] {
   gap: 10px;
   padding: 32px 20px;
 }
+
+/* Shelf buttons on search results */
+.shelfButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.btnSmall {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.shelfResult {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+  margin-top: 4px;
+}
+.shelfDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 4px 8px 4px 0;
+}
+.olBadge {
+  justify-self: start;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.olCoverLink {
+  display: block;
+  width: fit-content;
+}
+.olBook .errorBox {
+  font-size: 12.5px;
+  padding: 6px 8px;
+}

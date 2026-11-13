@@ -217,7 +217,7 @@ export default function CirclesHome() {
           </h1>
           <p className="pageSubtitle">Your reading circles. Discussions unlock as you read.</p>
         </div>
-        {!creating && data && data.books.length > 0 && (
+        {!creating && data && data.books.some((b) => b.chapterCount > 0) && (
           <button type="button" className="btn btnPrimary" onClick={() => setCreating(true)}>
             <Add style={{ fontSize: 18 }} /> Start a circle
           </button>
@@ -234,7 +234,7 @@ export default function CirclesHome() {
       )}
 
       {creating && data && (
-        <StartCircle books={data.books} onCancel={() => setCreating(false)} onCreated={(c) => history.push(`/circles/${c._id}`)} />
+        <StartCircle books={data.books.filter((b) => b.chapterCount > 0)} onCancel={() => setCreating(false)} onCreated={(c) => history.push(`/circles/${c._id}`)} />
       )}
 
       {!data && !error ? (

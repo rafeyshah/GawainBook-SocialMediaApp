@@ -140,3 +140,14 @@
   background: rgba(253, 251, 247, 0.6);
   box-shadow: 0 5px 0 rgba(253, 251, 247, 0.45);
 }
+
+/* Real cover images (books added from Open Library) */
+.bookCoverImg {
+  object-fit: cover;
+  padding: 0;
+  background: var(--surface-2);
+}
+.progressLabel.noChapters {
+  font-size: 12.5px;
+  color: var(--muted);
+}

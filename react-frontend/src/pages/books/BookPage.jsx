@@ -85,7 +85,8 @@ export default function BookPage() {
             <h1 className="bookHeroTitle">{book.title}</h1>
             <p className="bookHeroAuthor">
               {book.author}
-              {book.publishedYear ? ` · ${book.publishedYear}` : ""} · {plural(book.chapterCount, "chapter")}
+              {book.publishedYear ? ` · ${book.publishedYear}` : ""}
+              {book.chapterCount ? ` · ${plural(book.chapterCount, "chapter")}` : ""}
             </p>
             {book.description && <p className="bookHeroText">{book.description}</p>}
             <ShelfPicker value={book.shelf} onChange={setShelf} disabled={saving} />
@@ -110,6 +111,25 @@ export default function BookPage() {
           </div>
         </section>
 
+        {book.chapterCount === 0 ? (
+          <section className="section" aria-labelledby="chaptersTitle">
+            <h2 className="sectionTitle" id="chaptersTitle">
+              Chapters
+            </h2>
+            <div className="card emptyCard">
+              <strong>No chapter list yet</strong>
+              You can keep this book on your shelves. Reading circles need a chapter list, so they can't read it yet.
+              {book.olWorkId && (
+                <>
+                  {" "}
+                  <a href={`https://openlibrary.org/works/${book.olWorkId}`} target="_blank" rel="noopener noreferrer">
+                    See it on Open Library
+                  </a>
+                </>
+              )}
+            </div>
+          </section>
+        ) : (
         <section className="section" aria-labelledby="chaptersTitle">
           <h2 className="sectionTitle" id="chaptersTitle">
             Chapters
@@ -137,6 +157,7 @@ export default function BookPage() {
             </div>
           </div>
         </section>
+        )}
       </>
     );
     // Circles reading this book sit beside the details on wide screens.

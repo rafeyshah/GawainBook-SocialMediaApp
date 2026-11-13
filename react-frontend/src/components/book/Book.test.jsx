@@ -54,9 +54,15 @@ describe("ProgressBar", () => {
     expect(bar()).toHaveAttribute("aria-valuenow", String(Math.min(chapter, total)));
   });
 
-  test("handles a book with no chapters", () => {
+  test("a book with no chapter list shows a note instead of a bar", () => {
     const { container } = render(<ProgressBar chapter={0} total={0} />);
-    expect(container.querySelector(".progressFill").style.width).toBe("0%");
+    expect(container.querySelector(".progressFill")).toBeNull();
+    expect(screen.getByText("No chapter list yet")).toBeInTheDocument();
+  });
+
+  test("…and nothing at all without a label", () => {
+    const { container } = render(<ProgressBar chapter={0} total={0} label={false} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });
 

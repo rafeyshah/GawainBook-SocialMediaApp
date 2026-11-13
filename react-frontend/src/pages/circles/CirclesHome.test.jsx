@@ -185,3 +185,20 @@ test("load errors show a retry that works", async () => {
   userEvent.click(screen.getByRole("button", { name: "Try again" }));
   expect(await screen.findByRole("region", { name: "Your circles" })).toBeInTheDocument();
 });
+
+
+test("Start a circle only offers books with chapters", async () => {
+  mockApi({ books: [{ ...BOOK, shelf: "reading", chapter: 12 }, { ...OZ, shelf: null, chapter: 0 }, { _id: "b9", slug: "emma", title: "Emma", author: "Jane Austen", chapterCount: 0, shelf: "want", chapter: 0 }] });
+  renderPage();
+  userEvent.click(await screen.findByRole("button", { name: /Start a circle/ }));
+  const options = within(screen.getByLabelText("Book")).getAllByRole("option").map((o) => o.textContent);
+  expect(options).toEqual([BOOK.title, OZ.title]);
+});
+
+test("no Start a circle button when no book has chapters", async () => {
+  mockApi({ books: [{ _id: "b9", slug: "emma", title: "Emma", author: "Jane Austen", chapterCount: 0, shelf: "want", chapter: 0 }] });
+  renderPage();
+  await screen.findByRole("heading", { level: 1 });
+  await waitFor(() => expect(axios.get).toHaveBeenCalledWith("/books"));
+  expect(screen.queryByRole("button", { name: /Start a circle/ })).toBeNull();
+});

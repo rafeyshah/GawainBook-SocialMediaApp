@@ -187,6 +187,10 @@ export function circleRouter(limitPosting: RequestHandler = pass) {
       const db = getDb();
       const [book] = await db.select({ id: books.id }).from(books).where(eq(books.id, req.body.bookId));
       if (!book) throw new HttpError(400, "Choose a book.");
+      // Discussions are per chapter, so a circle needs a book with chapters.
+      if ((await lastChapter(book.id)) === 0) {
+        throw new HttpError(400, "This book doesn't have chapters in GawainBook yet, so a circle can't read it.");
+      }
       const me = req.user!.id;
 
       const circle = await db.transaction(async (tx) => {

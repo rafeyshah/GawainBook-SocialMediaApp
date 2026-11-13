@@ -177,9 +177,16 @@ export const books = pgTable(
     // Colour for the generated cover (no cover images, so no image rights).
     coverColor: text("cover_color").notNull().default("#2f7553"),
     sourceNote: text("source_note").notNull().default(""),
+    // Books added from Open Library search: the work id (e.g. "OL66554W") and its cover.
+    olWorkId: text("ol_work_id").unique("books_ol_work_id_unique"),
+    coverUrl: text("cover_url"),
     createdAt: createdAt(),
   },
-  (t) => [check("books_cover_color_hex", sql`${t.coverColor} ~ '^#[0-9a-fA-F]{6}$'`)]
+  (t) => [
+    check("books_cover_color_hex", sql`${t.coverColor} ~ '^#[0-9a-fA-F]{6}$'`),
+    check("books_ol_work_id_format", sql`${t.olWorkId} is null or ${t.olWorkId} ~ '^OL[0-9]+W$'`),
+    check("books_cover_url_open_library", sql`${t.coverUrl} is null or ${t.coverUrl} like 'https://covers.openlibrary.org/%'`),
+  ]
 );
 
 // seq is the canonical order (prologue = 0); progress compares against it.
