@@ -1,2 +1,3 @@
 # Source texts are stored byte-for-byte; their checksums are verified by tests.
 docs/corpus/**/*.txt -text
+Node-Rest-API/tests/fixtures/**/*.txt -text

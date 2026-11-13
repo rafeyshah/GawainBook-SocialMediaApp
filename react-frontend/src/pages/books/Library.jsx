@@ -47,6 +47,16 @@ export default function Library() {
     }
   };
 
+  const remove = async (b) => {
+    setError("");
+    try {
+      await axios.delete(`/books/${b._id}/progress`);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
   const notShelved = books.filter((b) => !b.shelf);
   const list = shelves ? shelves[tab] : [];
 
@@ -83,14 +93,23 @@ export default function Library() {
           ) : (
             <div className="cardGrid libraryGrid">
               {list.map((b) => (
-                <Link key={b._id} to={`/books/${b.slug}`} className="card bookTile">
-                  <BookCover book={b} size="md" />
+                <div key={b._id} className="card bookTile">
+                  <Link to={`/books/${b.slug}`} aria-label={b.title} className="bookTileCover">
+                    <BookCover book={b} size="md" />
+                  </Link>
                   <span className="rowCardBody">
-                    <span className="rowCardTitle">{b.title}</span>
+                    <Link to={`/books/${b.slug}`} className="rowCardTitle cardTitleLink">
+                      {b.title}
+                    </Link>
                     <span className="rowCardMeta">{b.author}</span>
                     {tab !== "want" && <ProgressBar chapter={b.chapter} total={b.chapterCount} />}
+                    <span className="itemActions">
+                      <button type="button" className="linkBtn danger" onClick={() => remove(b)} aria-label={`Remove ${b.title} from your shelves`}>
+                        Remove
+                      </button>
+                    </span>
                   </span>
-                </Link>
+                </div>
               ))}
             </div>
           )}
@@ -134,7 +153,7 @@ export default function Library() {
       <BookSearch
         onShelved={(shelf) => {
           load();
-          setTab(shelf);
+          if (shelf) setTab(shelf);
         }}
       />
     </Layout>

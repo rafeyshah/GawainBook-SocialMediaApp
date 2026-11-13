@@ -6,6 +6,7 @@ import type { Response } from "supertest";
 import { createApp, Limit, LimitName } from "../src/app";
 import { OpenLibrary } from "../src/openLibrary";
 import { MemoryMailer } from "../src/mailer";
+import { Gutenberg } from "../src/gutenberg";
 import { DiskStorage } from "../src/storage";
 import { LegalConfig } from "../src/legal";
 
@@ -22,8 +23,16 @@ export const offlineOpenLibrary = () =>
 // Every email the app sends in tests lands here.
 export const mailer = new MemoryMailer();
 
-export const makeApp = (limits: Partial<Record<LimitName, Limit>> = {}, openLibrary: OpenLibrary = offlineOpenLibrary()) =>
+// …nor the real Project Gutenberg: every eBook is "not found" unless a test says otherwise.
+export const offlineGutenberg = () => new Gutenberg({ fetch: async () => ({ ok: false, status: 404, text: async () => "" }) });
+
+export const makeApp = (
+  limits: Partial<Record<LimitName, Limit>> = {},
+  openLibrary: OpenLibrary = offlineOpenLibrary(),
+  gutenberg: Gutenberg = offlineGutenberg()
+) =>
   createApp({
+    gutenberg,
     mailer,
     storage: new DiskStorage(UPLOAD_DIR),
     legal: () => legal,

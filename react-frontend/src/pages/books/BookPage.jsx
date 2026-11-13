@@ -8,6 +8,56 @@ import ProgressEditor from "../../components/book/ProgressEditor";
 import { errorMessage } from "../../apiCalls";
 import { plural } from "../circles/CirclesHome";
 import "../reading/reading.css";
+import "../reading/community.css";
+
+export const MAX_CHAPTERS = 200;
+
+// "How many chapters does your edition have?" for books without a list.
+export function ChapterSetup({ book, onSaved, correcting = false, onCancel }) {
+  const [count, setCount] = useState(correcting ? String(book.chapterCount) : "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const n = Number(count);
+  const valid = Number.isInteger(n) && n >= 1 && n <= MAX_CHAPTERS;
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await axios.post(`/books/${book._id}/chapters`, { count: n });
+      onSaved();
+    } catch (err) {
+      setError(errorMessage(err));
+      setSaving(false);
+    }
+  };
+  return (
+    <form className="chapterSetup" onSubmit={submit} aria-label="Set up chapters">
+      <label className="field">
+        How many chapters does your edition have?
+        <input className="input" type="number" inputMode="numeric" min={1} max={MAX_CHAPTERS} step={1} value={count} onChange={(e) => setCount(e.target.value)} placeholder="e.g. 31" />
+      </label>
+      <p className="sourceNote">
+        This turns on chapter-by-chapter progress and lets circles read the book. You can correct it until a circle starts reading.
+      </p>
+      {error && (
+        <div className="errorBox" role="alert">
+          {error}
+        </div>
+      )}
+      <div className="formActions">
+        {onCancel && (
+          <button type="button" className="btn btnGhost" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+        <button type="submit" className="btn btnPrimary" disabled={!valid || saving}>
+          {saving ? "Saving…" : "Save chapters"}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 export const SHELF_LABELS = [
   ["want", "Want to read"],
@@ -33,6 +83,7 @@ export default function BookPage() {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -48,6 +99,24 @@ export default function BookPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const removeFromShelves = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await axios.delete(`/books/${book._id}/progress`);
+      setBook((b) => ({ ...b, ...res.data, canSetChapters: false }));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reload = async () => {
+    setCorrecting(false);
+    await load();
+  };
 
   const setShelf = async (shelf) => {
     setSaving(true);
@@ -87,9 +156,24 @@ export default function BookPage() {
               {book.author}
               {book.publishedYear ? ` · ${book.publishedYear}` : ""}
               {book.chapterCount ? ` · ${plural(book.chapterCount, "chapter")}` : ""}
+              {book.pageCount ? ` · about ${book.pageCount} pages` : ""}
             </p>
             {book.description && <p className="bookHeroText">{book.description}</p>}
+            {book.subjects && book.subjects.length > 0 && (
+              <ul className="genreChips" aria-label="Subjects" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {book.subjects.map((s) => (
+                  <li key={s} className="genreChip">
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            )}
             <ShelfPicker value={book.shelf} onChange={setShelf} disabled={saving} />
+            {book.shelf && (
+              <button type="button" className="linkBtn danger removeShelf" onClick={removeFromShelves} disabled={saving}>
+                Remove from my shelves
+              </button>
+            )}
             {book.shelf && (
               <>
                 <ProgressBar chapter={book.chapter} total={book.chapterCount} />
@@ -118,7 +202,11 @@ export default function BookPage() {
             </h2>
             <div className="card emptyCard">
               <strong>No chapter list yet</strong>
-              You can keep this book on your shelves. Reading circles need a chapter list, so they can't read it yet.
+              {book.canSetChapters ? (
+                <ChapterSetup book={book} onSaved={reload} />
+              ) : (
+                <>Add this book to one of your shelves to set up its chapters. Until then, circles can't read it.</>
+              )}
               {book.olWorkId && (
                 <>
                   {" "}
@@ -155,6 +243,15 @@ export default function BookPage() {
               <span className="current">You're here</span>
               <span>Ahead</span>
             </div>
+            {book.chaptersSetByReader && book.canSetChapters && !correcting && (
+              <p className="sourceNote" style={{ marginBottom: 0 }}>
+                Chapters were added by a reader.{" "}
+                <button type="button" className="linkBtn" onClick={() => setCorrecting(true)}>
+                  Correct the count
+                </button>
+              </p>
+            )}
+            {correcting && <ChapterSetup book={book} correcting onSaved={reload} onCancel={() => setCorrecting(false)} />}
           </div>
         </section>
         )}

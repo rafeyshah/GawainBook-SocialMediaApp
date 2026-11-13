@@ -25,6 +25,7 @@ import { adminRouter } from "./routes/admin";
 import { createMailer, Mailer } from "./mailer";
 import { bookSearchRouter } from "./routes/books";
 import { OpenLibrary, COVER_IMAGE_ORIGINS } from "./openLibrary";
+import { Gutenberg } from "./gutenberg";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_TYPES: Record<string, string> = {
@@ -50,6 +51,7 @@ export interface AppOptions {
   legal?: () => LegalConfig;
   limits?: Partial<Record<LimitName, Limit>>;
   openLibrary?: OpenLibrary;
+  gutenberg?: Gutenberg;
   mailer?: Mailer;
 }
 
@@ -172,7 +174,7 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api/users", userRoute);
   app.use("/api/posts", postRouter(limit.posting));
   app.use("/api", postCommentRouter(limit.posting));
-  app.use("/api", bookSearchRouter(openLibrary, limit.posting));
+  app.use("/api", bookSearchRouter(openLibrary, limit.posting, options.gutenberg ?? new Gutenberg()));
   app.use("/api", bookRoute);
   app.use("/api", circleRouter(limit.posting));
   app.use("/api", safetyRouter());

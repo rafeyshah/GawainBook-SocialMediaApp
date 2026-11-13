@@ -180,11 +180,21 @@ export const books = pgTable(
     // Books added from Open Library search: the work id (e.g. "OL66554W") and its cover.
     olWorkId: text("ol_work_id").unique("books_ol_work_id_unique"),
     coverUrl: text("cover_url"),
+    subjects: text("subjects").array().notNull().default(sql`'{}'::text[]`),
+    pageCount: smallint("page_count"),
+    // When we last fetched details from Open Library (null = not yet).
+    detailsFetchedAt: timestamp("details_fetched_at", { withTimezone: true }),
+    // When we last looked for a chapter list on Project Gutenberg (null = not yet).
+    chaptersCheckedAt: timestamp("chapters_checked_at", { withTimezone: true }),
+    gutenbergId: integer("gutenberg_id"),
+    // Chapters added by a reader (books from Open Library have none at first).
+    chaptersSetBy: text("chapters_set_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
   (t) => [
     check("books_cover_color_hex", sql`${t.coverColor} ~ '^#[0-9a-fA-F]{6}$'`),
     check("books_ol_work_id_format", sql`${t.olWorkId} is null or ${t.olWorkId} ~ '^OL[0-9]+W$'`),
+    check("books_page_count", sql`${t.pageCount} is null or ${t.pageCount} between 1 and 20000`),
     check("books_cover_url_open_library", sql`${t.coverUrl} is null or ${t.coverUrl} like 'https://covers.openlibrary.org/%'`),
   ]
 );

@@ -20,12 +20,12 @@ const okFetch = (docs: unknown[]) => {
 describe("parseResults", () => {
   test("maps fields and builds cover URLs", () => {
     expect(parseResults({ docs: [doc(1)] })).toEqual([
-      { key: "/works/OL1W", title: "Title 1", author: "Jane Austen", year: 1813, coverUrl: `${OPEN_LIBRARY_COVERS}/b/id/1001-M.jpg`, editions: 42 },
+      { key: "/works/OL1W", title: "Title 1", author: "Jane Austen", year: 1813, coverUrl: `${OPEN_LIBRARY_COVERS}/b/id/1001-M.jpg`, editions: 42, pages: null, gutenbergIds: [] },
     ]);
   });
   test("handles missing optional fields", () => {
     expect(parseResults({ docs: [{ key: "/works/OL2W", title: "Bare" }] })[0]).toEqual({
-      key: "/works/OL2W", title: "Bare", author: "Unknown author", year: null, coverUrl: null, editions: 0,
+      key: "/works/OL2W", title: "Bare", author: "Unknown author", year: null, coverUrl: null, editions: 0, pages: null, gutenbergIds: [],
     });
   });
   test("joins at most two authors and ignores non-text authors", () => {

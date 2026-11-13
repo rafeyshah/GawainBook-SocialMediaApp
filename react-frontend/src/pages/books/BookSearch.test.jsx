@@ -160,3 +160,36 @@ describe("covers and progress for books without chapters", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+
+describe("removing from search results", () => {
+  test("an added Open Library book can be removed again", async () => {
+    axios.post.mockResolvedValueOnce({ data: { book: { _id: "b9", slug: "emma" }, shelf: "want" } });
+    axios.delete.mockResolvedValueOnce({ data: { shelf: null, chapter: 0 } });
+    const { onShelved } = await setup();
+    const theirs = screen.getByRole("list", { name: "Open Library results" });
+    userEvent.click(within(theirs).getByRole("button", { name: "Add Emma to Want to read" }));
+    userEvent.click(await within(theirs).findByRole("button", { name: "Remove Emma from your shelves" }));
+    expect(await within(theirs).findByRole("button", { name: "Add Emma to Want to read" })).toBeInTheDocument();
+    expect(axios.delete).toHaveBeenCalledWith("/books/b9/progress");
+    expect(onShelved).toHaveBeenLastCalledWith(null);
+  });
+
+  test("one of our books already on a shelf can be removed", async () => {
+    axios.delete.mockResolvedValueOnce({ data: { shelf: null, chapter: 0 } });
+    await setup(results({ local: [{ ...BOOK, shelf: "reading", chaptersAvailable: true }] }));
+    const ours = screen.getByRole("list", { name: "Books on GawainBook" });
+    userEvent.click(within(ours).getByRole("button", { name: "Remove Pride and Prejudice from your shelves" }));
+    expect(await within(ours).findByRole("button", { name: "Add Pride and Prejudice to Reading" })).toBeInTheDocument();
+    expect(axios.delete).toHaveBeenCalledWith(`/books/${BOOK._id}/progress`);
+  });
+
+  test("a failed remove shows why on that result", async () => {
+    axios.delete.mockRejectedValueOnce(httpError(500, { error: "Something went wrong. Please try again." }));
+    await setup(results({ local: [{ ...BOOK, shelf: "want", chaptersAvailable: true }] }));
+    const ours = screen.getByRole("list", { name: "Books on GawainBook" });
+    userEvent.click(within(ours).getByRole("button", { name: "Remove Pride and Prejudice from your shelves" }));
+    expect(await within(ours).findByRole("alert")).toHaveTextContent("Something went wrong");
+    expect(within(ours).getByRole("status")).toHaveTextContent("Want to read");
+  });
+});

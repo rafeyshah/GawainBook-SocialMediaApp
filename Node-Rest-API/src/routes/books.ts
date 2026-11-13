@@ -5,6 +5,7 @@ import { books, chapters, circleMembers, circles, userBooks, users } from "../db
 import { handle, HttpError, isId } from "../http";
 import { requireAuth } from "../auth";
 import { OpenLibrary, WORK_KEY } from "../openLibrary";
+import { Gutenberg } from "../gutenberg";
 
 const router = Router();
 // Only this router's own paths: it's mounted at /api next to public routes.
@@ -95,6 +96,12 @@ router.get(
       coverColor: book.coverColor,
       coverUrl: book.coverUrl,
       olWorkId: book.olWorkId,
+      subjects: book.subjects,
+      pageCount: book.pageCount,
+      chaptersSetByReader: Boolean(book.chaptersSetBy),
+      // Chapters can be set by a reader who has the book on a shelf, while it
+      // has none, or while the reader-set ones aren't used by any circle yet.
+      canSetChapters: Boolean(mine) && (chapterRows.length === 0 || (Boolean(book.chaptersSetBy) && circleRows.length === 0)),
       sourceNote: book.sourceNote,
       chapters: chapterRows,
       chapterCount: chapterRows.length ? chapterRows[chapterRows.length - 1].seq : 0,
@@ -207,9 +214,70 @@ export const slugify = (title: string) =>
 
 const pass: RequestHandler = (req, res, next) => next();
 
+export const MAX_CHAPTERS = 200;
+
+// Fill in a book's Open Library details (description, subjects, pages) once.
+// Best effort: if Open Library is down, try again next time.
+export async function fillDetails(book: typeof books.$inferSelect, openLibrary: OpenLibrary) {
+  if (!book.olWorkId || book.detailsFetchedAt) return book;
+  const key = `/works/${book.olWorkId}`;
+  try {
+    const [details, work] = await Promise.all([openLibrary.details(key), openLibrary.work(key).catch(() => null)]);
+    const [updated] = await getDb()
+      .update(books)
+      .set({
+        description: book.description || details?.description || "",
+        subjects: details?.subjects?.length ? details.subjects : book.subjects,
+        pageCount: book.pageCount ?? work?.pages ?? null,
+        detailsFetchedAt: new Date(),
+      })
+      .where(eq(books.id, book.id))
+      .returning();
+    return updated;
+  } catch {
+    return book;
+  }
+}
+
+// Give a book from Open Library its real chapter list, from Project Gutenberg
+// (public-domain books only). Runs once per book; if Gutenberg is down, it's
+// tried again next time. Never replaces chapters the book already has.
+export async function fillChapters(book: typeof books.$inferSelect, openLibrary: OpenLibrary, gutenberg: Gutenberg) {
+  if (!book.olWorkId || book.chaptersCheckedAt) return book;
+  const db = getDb();
+  const markChecked = async (extra: Partial<typeof books.$inferInsert> = {}) =>
+    (await db.update(books).set({ chaptersCheckedAt: new Date(), ...extra }).where(eq(books.id, book.id)).returning())[0];
+  if (((await chapterCounts([book.id])).get(book.id) ?? 0) > 0) return markChecked();
+  let found;
+  try {
+    const work = await openLibrary.work(`/works/${book.olWorkId}`);
+    if (!work || work.gutenbergIds.length === 0) return markChecked();
+    found = await gutenberg.firstChapters(work.gutenbergIds);
+  } catch {
+    return book; // try again on the next visit
+  }
+  if (!found) return markChecked();
+  return db.transaction(async (tx) => {
+    // Someone may have set chapters in the meantime: theirs stay.
+    const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(chapters).where(eq(chapters.bookId, book.id));
+    if (n > 0) {
+      return (await tx.update(books).set({ chaptersCheckedAt: new Date() }).where(eq(books.id, book.id)).returning())[0];
+    }
+    await tx.insert(chapters).values(found!.chapters.map((c) => ({ bookId: book.id, seq: c.seq, title: c.title })));
+    const note = `Book details from Open Library (openlibrary.org/works/${book.olWorkId}). Chapter list from Project Gutenberg eBook #${found!.id}.`;
+    return (
+      await tx
+        .update(books)
+        .set({ chaptersCheckedAt: new Date(), gutenbergId: found!.id, chaptersSetBy: null, sourceNote: note })
+        .where(eq(books.id, book.id))
+        .returning()
+    )[0];
+  });
+}
+
 // Book search: our own books (with your shelf) plus Open Library results for
 // discovery. Open Library being slow or down only drops the second list.
-export function bookSearchRouter(openLibrary: OpenLibrary, limitPosting: RequestHandler = pass) {
+export function bookSearchRouter(openLibrary: OpenLibrary, limitPosting: RequestHandler = pass, gutenberg: Gutenberg = new Gutenberg()) {
   const search = Router();
   search.get(
     "/books/search",
@@ -249,6 +317,60 @@ export function bookSearchRouter(openLibrary: OpenLibrary, limitPosting: Request
         openLibraryError = true;
       }
       res.json({ query: q, local, openLibrary: openLibraryResults, openLibraryError });
+    })
+  );
+
+  // Before the book page loads: fill in Open Library details the first time.
+  search.get(
+    "/books/:idOrSlug",
+    requireAuth,
+    (req, res, next) => {
+      (async () => {
+        if (req.params.idOrSlug !== "search") {
+          let book = await findBook(req.params.idOrSlug);
+          if (book && book.olWorkId && !book.detailsFetchedAt) book = await fillDetails(book, openLibrary);
+          if (book && book.olWorkId && !book.chaptersCheckedAt) await fillChapters(book, openLibrary, gutenberg);
+        }
+      })().then(() => next(), next);
+    }
+  );
+
+  // Set how many chapters a book has (books from Open Library start without
+  // any). Numbered chapters 1..N; you need the book on your shelf. Reader-set
+  // chapters can be corrected until a circle starts reading the book.
+  search.post(
+    "/books/:idOrSlug/chapters",
+    requireAuth,
+    limitPosting,
+    handle(async (req, res) => {
+      const book = await findBook(req.params.idOrSlug);
+      if (!book) throw new HttpError(404, "Book not found.");
+      const count = req.body.count;
+      if (!Number.isInteger(count) || count < 1 || count > MAX_CHAPTERS) {
+        throw new HttpError(400, `Enter a number of chapters from 1 to ${MAX_CHAPTERS}.`);
+      }
+      const db = getDb();
+      const me = req.user!.id;
+      const [mine] = await db.select().from(userBooks).where(and(eq(userBooks.userId, me), eq(userBooks.bookId, book.id)));
+      if (!mine) throw new HttpError(403, "Add the book to one of your shelves first.");
+      const existing = (await chapterCounts([book.id])).get(book.id) ?? 0;
+      if (existing > 0) {
+        if (!book.chaptersSetBy) throw new HttpError(409, "This book's chapters come from its source and can't be changed.");
+        const [used] = await db.select({ id: circles.id }).from(circles).where(eq(circles.bookId, book.id)).limit(1);
+        if (used) throw new HttpError(409, "A circle is already reading this book, so its chapters can't change.");
+      }
+      await db.transaction(async (tx) => {
+        await tx.delete(chapters).where(eq(chapters.bookId, book.id));
+        await tx.insert(chapters).values(Array.from({ length: count }, (_, i) => ({ bookId: book.id, seq: i + 1, title: `Chapter ${i + 1}` })));
+        await tx.update(books).set({ chaptersSetBy: me }).where(eq(books.id, book.id));
+        // Nobody can be past the last chapter; finished readers end on it.
+        await tx
+          .update(userBooks)
+          .set({ chapterSeq: sql`least(${userBooks.chapterSeq}, ${count})` })
+          .where(eq(userBooks.bookId, book.id));
+        await tx.update(userBooks).set({ chapterSeq: count }).where(and(eq(userBooks.bookId, book.id), eq(userBooks.shelf, "finished")));
+      });
+      res.json({ chapterCount: count, chaptersSetByReader: true });
     })
   );
 
@@ -306,6 +428,8 @@ export function bookSearchRouter(openLibrary: OpenLibrary, limitPosting: Request
         if (!book) throw new HttpError(409, "Someone is adding this book right now. Please try again.");
       }
 
+      book = await fillDetails(book, openLibrary);
+      book = await fillChapters(book, openLibrary, gutenberg);
       const last = (await chapterCounts([book.id])).get(book.id) ?? 0;
       const chapter = shelf === "finished" ? last : 0;
       const [row] = await db

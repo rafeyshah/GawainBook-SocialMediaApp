@@ -20,6 +20,14 @@ const doc = (n: number, extra: Record<string, unknown> = {}) => ({
 function fakeOpenLibrary(docs: Record<string, unknown>[], opts: { fail?: boolean } = {}) {
   const fetch = jest.fn(async (url: string) => {
     if (opts.fail) throw new Error("down");
+    // A work's own record: /works/OL…W.json (description and subjects).
+    const work = url.match(/^https:\/\/openlibrary\.org(\/works\/OL\d+W)\.json$/)?.[1];
+    if (work) {
+      const d = docs.find((x) => x.key === work);
+      return d
+        ? { ok: true, status: 200, json: async () => ({ description: d.description ?? "", subjects: d.subjects ?? [] }) }
+        : { ok: false, status: 404, json: async () => ({}) };
+    }
     const q = decodeURIComponent(new URL(url).searchParams.get("q") || "");
     const key = q.match(/^key:(\/works\/OL\d+W)$/)?.[1];
     return { ok: true, status: 200, json: async () => ({ docs: key ? docs.filter((d) => d.key === key) : docs }) };
@@ -124,7 +132,8 @@ describe("POST /api/books/import", () => {
     expect(second.status).toBe(200);
     expect(second.body).toMatchObject({ created: false, shelf: "finished" });
     expect(second.body.book._id).toBe(first.body.book._id);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    // Looked up once (search + details) for the first reader; the second reuses it.
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect((await getDb().select().from(books).where(eq(books.olWorkId, "OL1W"))).length).toBe(1);
     expect((await a.c.get("/api/shelves")).body.want).toHaveLength(1);
   });

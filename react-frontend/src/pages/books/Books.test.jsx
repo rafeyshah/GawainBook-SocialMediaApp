@@ -47,7 +47,7 @@ describe("BookPage", () => {
     });
     renderBook();
     expect(await screen.findByRole("heading", { name: "Pride and Prejudice" })).toBeInTheDocument();
-    expect(screen.queryByText(/chapters/)).toBeNull();
+    expect(document.querySelector(".bookHeroAuthor")).not.toHaveTextContent(/chapter/);
     expect(screen.getByText("No chapter list yet", { selector: "strong" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See it on Open Library" })).toHaveAttribute("href", "https://openlibrary.org/works/OL5W");
     expect(screen.queryByLabelText(/Chapter you've reached/)).toBeNull();
@@ -141,7 +141,7 @@ describe("Library", () => {
     expect(reading).toHaveAttribute("aria-selected", "true");
     expect(reading).toHaveTextContent("1");
     expect(screen.getByRole("tab", { name: /Want to read/ })).toHaveTextContent("0");
-    expect(screen.getByRole("link", { name: /Pride and Prejudice/ })).toHaveAttribute("href", "/books/pride-and-prejudice");
+    for (const l of screen.getAllByRole("link", { name: /Pride and Prejudice/ })) expect(l).toHaveAttribute("href", "/books/pride-and-prejudice");
     expect(screen.getByText("Chapter 12 of 61")).toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe("Library", () => {
     userEvent.click(await screen.findByRole("tab", { name: /Want to read/ }));
     expect(screen.getByText(/Save books you'd like to read next/)).toBeInTheDocument();
     userEvent.click(screen.getByRole("tab", { name: /Finished/ }));
-    expect(screen.getByRole("link", { name: /Wonderful Wizard/ })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Wonderful Wizard/ }).length).toBeGreaterThan(0);
   });
 
   test("books not on a shelf can be added, then the tab switches", async () => {
@@ -193,4 +193,109 @@ describe("ProfileShelves", () => {
     await waitFor(() => expect(axios.get).toHaveBeenCalledTimes(2));
     expect(container).toBeEmptyDOMElement();
   });
+});
+
+
+describe("removing books and book details", () => {
+  const renderBook = () => renderWithAuth(<BookPage />, { route: "/books/pride-and-prejudice", path: "/books/:slug" });
+
+  test("Remove from my shelves takes it off, and the button goes away", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail() });
+    axios.delete.mockResolvedValueOnce({ data: { shelf: null, chapter: 0 } });
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Remove from my shelves" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove from my shelves" })).toBeNull());
+    expect(axios.delete).toHaveBeenCalledWith("/books/b1/progress");
+    for (const r of within(screen.getByRole("radiogroup", { name: "Shelf" })).getAllByRole("radio")) expect(r).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("a failed remove shows why", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail() });
+    axios.delete.mockRejectedValueOnce(httpError(404, { error: "Book not found." }));
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Remove from my shelves" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Book not found.");
+  });
+
+  test("no Remove button when it isn't on a shelf", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ shelf: null }) });
+    renderBook();
+    await screen.findByRole("heading", { name: "Pride and Prejudice" });
+    expect(screen.queryByRole("button", { name: "Remove from my shelves" })).toBeNull();
+  });
+
+  test("shows subjects and page count", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ subjects: ["Courtship", "Regency"], pageCount: 432 }) });
+    renderBook();
+    expect(await screen.findByRole("list", { name: "Subjects" })).toHaveTextContent("CourtshipRegency");
+    expect(document.querySelector(".bookHeroAuthor")).toHaveTextContent("about 432 pages");
+  });
+
+  test("a shelved book without chapters: set the count, then the page reloads with them", async () => {
+    let calls = 0;
+    axios.get.mockImplementation((url) => {
+      if (url !== "/books/pride-and-prejudice") return Promise.resolve({ data: [] });
+      calls += 1;
+      return Promise.resolve({
+        data:
+          calls === 1
+            ? bookDetail({ chapters: [], chapterCount: 0, chapter: 0, shelf: "reading", canSetChapters: true, circles: [] })
+            : bookDetail({ chapterCount: 31, chapters: Array.from({ length: 31 }, (_, i) => ({ seq: i + 1, title: `Chapter ${i + 1}` })), chapter: 0, shelf: "reading", chaptersSetByReader: true, canSetChapters: true, circles: [] }),
+      });
+    });
+    axios.post.mockResolvedValueOnce({ data: { chapterCount: 31, chaptersSetByReader: true } });
+    renderBook();
+    const form = await screen.findByRole("form", { name: "Set up chapters" });
+    const save = within(form).getByRole("button", { name: "Save chapters" });
+    expect(save).toBeDisabled();
+    userEvent.type(within(form).getByLabelText(/How many chapters/), "0");
+    expect(save).toBeDisabled();
+    userEvent.clear(within(form).getByLabelText(/How many chapters/));
+    userEvent.type(within(form).getByLabelText(/How many chapters/), "201");
+    expect(save).toBeDisabled();
+    userEvent.clear(within(form).getByLabelText(/How many chapters/));
+    userEvent.type(within(form).getByLabelText(/How many chapters/), "31");
+    userEvent.click(save);
+    expect(await screen.findByRole("list", { name: "31 chapters" })).toBeInTheDocument();
+    expect(axios.post).toHaveBeenCalledWith("/books/b1/chapters", { count: 31 });
+    expect(screen.getByText(/Chapters were added by a reader/)).toBeInTheDocument();
+  });
+
+  test("reader-set chapters can be corrected; errors are shown", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ chaptersSetByReader: true, canSetChapters: true }) });
+    axios.post.mockRejectedValueOnce(httpError(409, { error: "A circle is already reading this book, so its chapters can't change." }));
+    renderBook();
+    userEvent.click(await screen.findByRole("button", { name: "Correct the count" }));
+    const form = screen.getByRole("form", { name: "Set up chapters" });
+    expect(within(form).getByLabelText(/How many chapters/)).toHaveValue(61);
+    userEvent.click(within(form).getByRole("button", { name: "Save chapters" }));
+    expect(await within(form).findByRole("alert")).toHaveTextContent("circle is already reading");
+    userEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("form", { name: "Set up chapters" })).toBeNull();
+  });
+
+  test("not on a shelf: explains how to set up chapters instead of the form", async () => {
+    routeGet(axios, { "/books/pride-and-prejudice": bookDetail({ chapters: [], chapterCount: 0, shelf: null, canSetChapters: false, circles: [] }) });
+    renderBook();
+    expect(await screen.findByText(/Add this book to one of your shelves to set up its chapters/)).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Set up chapters" })).toBeNull();
+  });
+});
+
+test("Library: Remove takes a book off your shelf and reloads", async () => {
+  let removed = false;
+  axios.get.mockImplementation((url) => {
+    if (url === "/shelves") return Promise.resolve({ data: { reading: removed ? [] : [{ ...BOOK, shelf: "reading", chapter: 12 }], want: [], finished: [] } });
+    if (url === "/books") return Promise.resolve({ data: [{ ...BOOK, shelf: removed ? null : "reading", chapter: 0 }] });
+    return Promise.resolve({ data: [] });
+  });
+  axios.delete.mockImplementationOnce(async () => {
+    removed = true;
+    return { data: { shelf: null, chapter: 0 } };
+  });
+  renderWithAuth(<Library />);
+  const panel = await screen.findByRole("tabpanel", { name: "Reading" });
+  userEvent.click(within(panel).getByRole("button", { name: "Remove Pride and Prejudice from your shelves" }));
+  await waitFor(() => expect(within(screen.getByRole("tabpanel", { name: "Reading" })).queryByText("Pride and Prejudice")).toBeNull());
+  expect(axios.delete).toHaveBeenCalledWith("/books/b1/progress");
 });

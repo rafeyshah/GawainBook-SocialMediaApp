@@ -11,7 +11,7 @@ const QUICK_SHELVES = ["want", "reading"];
 
 // "Want to read" / "Reading" buttons for a search result, or "On your shelf"
 // once it's there (with a way to move it).
-function ShelfButtons({ title, shelf, busy, onPick, link }) {
+function ShelfButtons({ title, shelf, busy, onPick, onRemove, link }) {
   if (shelf) {
     return (
       <div className="shelfResult">
@@ -28,6 +28,11 @@ function ShelfButtons({ title, shelf, busy, onPick, link }) {
             Move to {SHELF_NAMES[s]}
           </button>
         ))}
+        {onRemove && (
+          <button type="button" className="linkBtn danger" disabled={busy} onClick={onRemove} aria-label={`Remove ${title} from your shelves`}>
+            Remove
+          </button>
+        )}
       </div>
     );
   }
@@ -89,12 +94,24 @@ export default function BookSearch({ onShelved }) {
     }
   };
 
+  // Take a book off your shelves (it stays in GawainBook for others).
+  const unshelve = async (id, bookId) => {
+    patch(id, { busy: "remove", error: "" });
+    try {
+      await axios.delete(`/books/${bookId}/progress`);
+      patch(id, { busy: false, shelf: null, removed: true });
+      if (onShelved) onShelved(null);
+    } catch (err) {
+      patch(id, { busy: false, error: errorMessage(err) });
+    }
+  };
+
   // An Open Library book: the server adds it to GawainBook, then shelves it.
   const shelveOpenLibrary = async (b, shelf) => {
     patch(b.key, { busy: shelf, error: "" });
     try {
       const res = await axios.post("/books/import", { key: b.key, shelf });
-      patch(b.key, { busy: false, shelf: res.data.shelf, slug: res.data.book.slug });
+      patch(b.key, { busy: false, shelf: res.data.shelf, slug: res.data.book.slug, bookId: res.data.book._id });
       if (onShelved) onShelved(res.data.shelf);
     } catch (err) {
       patch(b.key, { busy: false, error: errorMessage(err) });
@@ -146,7 +163,13 @@ export default function BookSearch({ onShelved }) {
                         {b.chapterCount ? ` · ${b.chapterCount} chapters` : ""}
                       </span>
                       {b.chaptersAvailable ? <span className="olBadge">Ready for circles</span> : null}
-                      <ShelfButtons title={b.title} shelf={st.shelf ?? b.shelf} busy={st.busy} onPick={(s) => shelveLocal(b, s)} />
+                      <ShelfButtons
+                        title={b.title}
+                        shelf={st.removed ? st.shelf : st.shelf ?? b.shelf}
+                        busy={st.busy}
+                        onPick={(s) => shelveLocal(b, s)}
+                        onRemove={() => unshelve(b._id, b._id)}
+                      />
                       {st.error && (
                         <span className="errorBox" role="alert">
                           {st.error}
@@ -192,6 +215,7 @@ export default function BookSearch({ onShelved }) {
                         shelf={st.shelf}
                         busy={st.busy}
                         onPick={(s) => shelveOpenLibrary(b, s)}
+                        onRemove={st.bookId ? () => unshelve(b.key, st.bookId) : null}
                         link={st.slug ? `/books/${st.slug}` : null}
                       />
                       {st.error && (
