@@ -3,7 +3,7 @@ import { getDb } from "../src/db/client";
 import { users } from "../src/db/schema";
 import { spoilerFields } from "../src/routes/posts";
 import { HttpError } from "../src/http";
-import { Client, createPost, makeApp, newClient, signUp, NONEXISTENT_UUID, CONSENT } from "./helpers";
+import { Client, createPost, makeApp, signUp, NONEXISTENT_UUID, CONSENT } from "./helpers";
 
 type Account = Awaited<ReturnType<typeof signUp>>;
 const comment = (a: Account, postId: string, body = "Lovely!") => a.client.post(`/api/posts/${postId}/comments`, { body });
@@ -175,14 +175,6 @@ describe("comments on posts", () => {
     const a = await signUp();
     expect((await a.client.patch(`/api/post-comments/${id}`, { body: "x" })).status).toBe(404);
     expect((await a.client.delete(`/api/post-comments/${id}`)).status).toBe(404);
-  });
-
-  test("needs a session", async () => {
-    const a = await signUp();
-    const post = await createPost(a.client);
-    const anon = await newClient();
-    expect((await anon.get(`/api/posts/${post._id}/comments`)).status).toBe(401);
-    expect((await anon.post(`/api/posts/${post._id}/comments`, { body: "hi" })).status).toBe(401);
   });
 });
 

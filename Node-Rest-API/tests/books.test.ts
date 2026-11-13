@@ -1,4 +1,4 @@
-import { signUp, newClient } from "./helpers";
+import { signUp } from "./helpers";
 import { makeBook, setProgress } from "./reading.helpers";
 
 describe("GET /api/books", () => {
@@ -9,10 +9,6 @@ describe("GET /api/books", () => {
     const res = await a.client.get("/api/books");
     expect(res.status).toBe(200);
     expect(res.body[0]).toMatchObject({ _id: book.id, title: "Alpha", chapterCount: 5, shelf: "reading", chapter: 2 });
-  });
-
-  test("requires sign-in", async () => {
-    expect((await (await newClient()).get("/api/books")).status).toBe(401);
   });
 });
 

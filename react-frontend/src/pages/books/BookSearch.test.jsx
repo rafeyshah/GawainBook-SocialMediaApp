@@ -1,9 +1,7 @@
-import { screen, waitFor, within, fireEvent } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axios from "axios";
 import BookSearch from "./BookSearch";
-import BookCover from "../../components/book/BookCover";
-import ProgressEditor from "../../components/book/ProgressEditor";
 import { renderWithAuth, httpError } from "../../testUtils";
 import { BOOK } from "../../readingFixtures";
 
@@ -39,12 +37,17 @@ describe("results", () => {
     expect(within(theirs).getByRole("button", { name: "Add Lady Susan to Want to read" })).toBeInTheDocument();
   });
 
-  test("a book already on your shelf says so instead of offering to add it", async () => {
+  test("a book already on your shelf says so instead of offering to add it, and can be removed", async () => {
+    axios.delete.mockResolvedValueOnce({ data: { shelf: null, chapter: 0 } });
     await setup(results({ local: [{ ...BOOK, shelf: "reading", chaptersAvailable: true }] }));
     const ours = screen.getByRole("list", { name: "Books on GawainBook" });
     expect(within(ours).getByRole("status")).toHaveTextContent("Reading");
     expect(within(ours).queryByRole("button", { name: /^Add/ })).toBeNull();
     expect(within(ours).getByRole("button", { name: "Move Pride and Prejudice to Want to read" })).toBeInTheDocument();
+    // …and Remove takes it off again.
+    userEvent.click(within(ours).getByRole("button", { name: "Remove Pride and Prejudice from your shelves" }));
+    expect(await within(ours).findByRole("button", { name: "Add Pride and Prejudice to Reading" })).toBeInTheDocument();
+    expect(axios.delete).toHaveBeenCalledWith(`/books/${BOOK._id}/progress`);
   });
 
   test("Search needs 2+ characters", () => {
@@ -74,7 +77,7 @@ describe("results", () => {
   });
 });
 
-describe("adding to a shelf", () => {
+describe("shelving from the results", () => {
   test("an Open Library book is imported and shelved; links to its new page", async () => {
     axios.post.mockResolvedValueOnce({ data: { book: { _id: "b9", slug: "emma" }, shelf: "reading", created: true } });
     const { onShelved } = await setup();
@@ -124,45 +127,19 @@ describe("adding to a shelf", () => {
     expect(onShelved).toHaveBeenCalledWith("want");
   });
 
-  test("errors show on that result only, and you can try again", async () => {
-    axios.post.mockRejectedValueOnce(httpError(502, { error: "Open Library isn't answering right now. Please try again in a minute." }));
-    await setup();
-    const theirs = screen.getByRole("list", { name: "Open Library results" });
-    userEvent.click(within(theirs).getByRole("button", { name: "Add Emma to Reading" }));
-    const item = within(theirs).getByRole("link", { name: "Emma" }).closest("li");
-    expect(await within(item).findByRole("alert")).toHaveTextContent("isn't answering");
-    expect(within(item).getByRole("button", { name: "Add Emma to Reading" })).toBeEnabled();
+  test.each([
+    ["adding", "post", "Add Emma to Reading", "Open Library results", results()],
+    ["removing", "delete", "Remove Pride and Prejudice from your shelves", "Books on GawainBook", results({ local: [{ ...BOOK, shelf: "want", chaptersAvailable: true }] })],
+  ])("an error while %s shows on that result only, and you can try again", async (_action, method, button, list, data) => {
+    axios[method].mockRejectedValueOnce(httpError(502, { error: "Open Library isn't answering right now." }));
+    await setup(data);
+    const scope = within(screen.getByRole("list", { name: list }));
+    userEvent.click(scope.getByRole("button", { name: button }));
+    expect(await scope.findByRole("alert")).toHaveTextContent("isn't answering");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(scope.getByRole("button", { name: button })).toBeEnabled();
   });
 
-  test("a new search clears what was added", async () => {
-    axios.post.mockResolvedValueOnce({ data: { book: { _id: "b9", slug: "emma" }, shelf: "want" } });
-    await setup();
-    userEvent.click(screen.getByRole("button", { name: "Add Emma to Want to read" }));
-    await screen.findByRole("status");
-    axios.get.mockResolvedValueOnce({ data: results() });
-    userEvent.click(screen.getByRole("button", { name: "Search" }));
-    expect(await screen.findByRole("button", { name: "Add Emma to Want to read" })).toBeInTheDocument();
-  });
-});
-
-describe("covers and progress for books without chapters", () => {
-  test("BookCover shows the Open Library cover, and falls back to a typeset cover if it fails", () => {
-    renderWithAuth(<BookCover book={{ ...BOOK, coverUrl: "https://covers.openlibrary.org/b/id/1-M.jpg" }} />);
-    const img = screen.getByRole("img", { name: "Pride and Prejudice by Jane Austen" });
-    expect(img.tagName).toBe("IMG");
-    expect(img).toHaveAttribute("src", "https://covers.openlibrary.org/b/id/1-M.jpg");
-    fireEvent.error(img);
-    expect(screen.getByRole("img", { name: "Pride and Prejudice by Jane Austen" }).tagName).toBe("DIV");
-  });
-
-  test("ProgressEditor shows nothing for a book without chapters", () => {
-    const { container } = renderWithAuth(<ProgressEditor book={{ ...BOOK, chapterCount: 0 }} chapter={0} />);
-    expect(container).toBeEmptyDOMElement();
-  });
-});
-
-
-describe("removing from search results", () => {
   test("an added Open Library book can be removed again", async () => {
     axios.post.mockResolvedValueOnce({ data: { book: { _id: "b9", slug: "emma" }, shelf: "want" } });
     axios.delete.mockResolvedValueOnce({ data: { shelf: null, chapter: 0 } });
@@ -175,21 +152,13 @@ describe("removing from search results", () => {
     expect(onShelved).toHaveBeenLastCalledWith(null);
   });
 
-  test("one of our books already on a shelf can be removed", async () => {
-    axios.delete.mockResolvedValueOnce({ data: { shelf: null, chapter: 0 } });
-    await setup(results({ local: [{ ...BOOK, shelf: "reading", chaptersAvailable: true }] }));
-    const ours = screen.getByRole("list", { name: "Books on GawainBook" });
-    userEvent.click(within(ours).getByRole("button", { name: "Remove Pride and Prejudice from your shelves" }));
-    expect(await within(ours).findByRole("button", { name: "Add Pride and Prejudice to Reading" })).toBeInTheDocument();
-    expect(axios.delete).toHaveBeenCalledWith(`/books/${BOOK._id}/progress`);
-  });
-
-  test("a failed remove shows why on that result", async () => {
-    axios.delete.mockRejectedValueOnce(httpError(500, { error: "Something went wrong. Please try again." }));
-    await setup(results({ local: [{ ...BOOK, shelf: "want", chaptersAvailable: true }] }));
-    const ours = screen.getByRole("list", { name: "Books on GawainBook" });
-    userEvent.click(within(ours).getByRole("button", { name: "Remove Pride and Prejudice from your shelves" }));
-    expect(await within(ours).findByRole("alert")).toHaveTextContent("Something went wrong");
-    expect(within(ours).getByRole("status")).toHaveTextContent("Want to read");
+  test("a new search clears what was added", async () => {
+    axios.post.mockResolvedValueOnce({ data: { book: { _id: "b9", slug: "emma" }, shelf: "want" } });
+    await setup();
+    userEvent.click(screen.getByRole("button", { name: "Add Emma to Want to read" }));
+    await screen.findByRole("status");
+    axios.get.mockResolvedValueOnce({ data: results() });
+    userEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByRole("button", { name: "Add Emma to Want to read" })).toBeInTheDocument();
   });
 });

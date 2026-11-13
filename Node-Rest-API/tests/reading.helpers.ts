@@ -22,13 +22,13 @@ export type Account = Awaited<ReturnType<typeof signUp>>;
 export const setProgress = (a: Account, bookId: string, chapter: number) =>
   a.client.put(`/api/books/${bookId}/progress`, { chapter });
 
-export async function makeCircle(owner: Account, bookId: string, extra: Record<string, unknown> = {}) {
+export async function makeCircle(owner: Pick<Account, "client">, bookId: string, extra: Record<string, unknown> = {}) {
   const res = await owner.client.post("/api/circles", { name: "Test Circle", bookId, ...extra });
   if (res.status !== 201) throw new Error(`makeCircle failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body as { _id: string; name: string };
 }
 
-export async function makeThread(author: Account, circleId: string, chapter: number, title = `Chapter ${chapter} chat`) {
+export async function makeThread(author: Pick<Account, "client">, circleId: string, chapter: number, title = `Chapter ${chapter} chat`) {
   const res = await author.client.post(`/api/circles/${circleId}/threads`, { chapter, title, body: `Secret thoughts on ${chapter}` });
   if (res.status !== 201) throw new Error(`makeThread failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body as { _id: string };

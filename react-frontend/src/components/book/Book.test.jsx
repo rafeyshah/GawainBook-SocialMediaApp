@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axios from "axios";
 import BookCover, { ProgressBar, chapterName } from "./BookCover";
@@ -32,6 +32,14 @@ describe("BookCover", () => {
     const cover = screen.getByRole("img");
     expect(cover).not.toHaveTextContent("Jane Austen");
     expect(cover.style.getPropertyValue("--cover")).toBe("#2f7553");
+  });
+
+  test("shows an Open Library cover, falling back to the typeset cover if it fails to load", () => {
+    render(<BookCover book={{ ...BOOK, coverUrl: "https://covers.openlibrary.org/b/id/1-M.jpg" }} />);
+    const img = screen.getByRole("img", { name: "Pride and Prejudice by Jane Austen" });
+    expect(img).toHaveAttribute("src", "https://covers.openlibrary.org/b/id/1-M.jpg");
+    fireEvent.error(img);
+    expect(screen.getByRole("img", { name: "Pride and Prejudice by Jane Austen" }).tagName).toBe("DIV");
   });
 
   test("renders nothing without a book", () => {
@@ -68,6 +76,11 @@ describe("ProgressBar", () => {
 
 describe("ProgressEditor", () => {
   const select = () => screen.getByLabelText(/Chapter you've reached/);
+
+  test("renders nothing for a book without a chapter list", () => {
+    const { container } = render(<ProgressEditor book={{ ...BOOK, chapterCount: 0 }} chapter={0} />);
+    expect(container).toBeEmptyDOMElement();
+  });
 
   test("lists every chapter plus 'Not started', with named chapters", () => {
     render(<ProgressEditor book={{ ...BOOK, chapterCount: 3 }} chapter={1} chapters={[{ seq: 1, title: "The Cyclone" }, { seq: 2 }, { seq: 3 }]} />);
